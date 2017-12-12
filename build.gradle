@@ -1,0 +1,130 @@
+///////////////////////////////////////////////////////////////////////////////////////
+//
+//                 Gradle Template Summary
+//
+//   Frequently Used Command:
+//      [ gradle ]          Default task. same with 'gradle build'.
+//      [ gradle build ]    Compile/test your code, and create a war file containing your main classes and resources.
+//
+////////////////////////////////////////////////////////////////////////////////////////
+
+//Definition apply plugin
+apply plugin: 'idea'
+apply plugin: 'java'
+apply plugin: 'maven'
+
+//--------------------------------- Based setting  for current project ---------------------------------
+
+// Definition sourceCompatibility and targetCompatibility.
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+buildscript {
+    ext {
+        MODULE                      = "goodutils"
+        MAVEN_GROUP_ID              = "goodutils"
+        MAVEN_ARTIFACT_ID           = "goodutils"
+        MAVEN_VERSION               = "0.1"
+    }
+
+    repositories {
+        maven {
+            credentials {
+                username MAVEN_REPO_USERNAME
+                password MAVEN_REPO_PASSWORD
+            }
+            url REPOSITORRY_URL
+        }
+    }
+
+    configurations.all {
+        resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+    }
+}
+
+// Access maven center.
+repositories {
+    maven {
+        credentials {
+            username MAVEN_REPO_USERNAME
+            password MAVEN_REPO_PASSWORD
+        }
+        url REPOSITORRY_URL
+    }
+}
+
+
+// Definition source which should include.
+sourceSets {
+    main {
+        java {
+            srcDir 'src'
+        }
+        resources {
+        }
+    }
+}
+
+
+//--------------------------------- Dependencies definition ---------------------------------
+
+dependencies {
+
+    // https://mvnrepository.com/artifact/org.snmp4j/snmp4j
+    //compile group: 'org.snmp4j', name: 'snmp4j', version: '2.5.6'
+
+    runtime(
+    )
+
+
+}
+
+// Define manifest
+ext.sharedManifest = manifest {
+    attributes(
+            'Modlue': "${MODULE}",
+            'Implementation-Title': "${project.name}",
+            'Built-Date': new Date().getDateTimeString(),
+            'Built-With': "gradle-${project.getGradle().getGradleVersion()}, groovy-${GroovySystem.getVersion()}",
+            'Created-By': 'Java ' + System.getProperty('java.version') + ' (' + System.getProperty('java.vendor') + ')'
+    )
+}
+
+
+//--------------------------------- Specific Tasks ---------------------------------
+/*
+*  Override jar task addition attributes
+*/
+jar {
+    manifest = project.manifest {
+        from sharedManifest
+    }
+}
+
+defaultTasks 'clean','test','jar'
+
+task build (overwrite: true ) {
+    dependsOn = ['clean','test','jar']
+
+    test.mustRunAfter clean
+    jar.mustRunAfter test
+}
+
+task devbuild {
+    dependsOn = ['clean','jar']
+
+    jar.mustRunAfter clean
+}
+
+//Define the test task
+test {
+    ignoreFailures = true
+    reports.html.destination = file("$buildDir/test-reports")
+}
+
+
+task createJavaProject << {
+    sourceSets*.java.srcDirs*.each { it.mkdirs() }
+    sourceSets*.resources.srcDirs*.each { it.mkdirs()}
+}
+
