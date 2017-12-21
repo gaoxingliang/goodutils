@@ -69,13 +69,18 @@ public class SSLTest
 
         System.out.println("-no-check-certificate        Ignores certificate errors");
         System.out.println("-no-verify-hostname          Ignores hostname mismatches");
-
+        System.out.println("-unlimited-jce               Enable unlimited JCE");
         System.out.println("-h -help --help     Shows this help message");
     }
+
 
     public static void main(String[] args)
         throws Exception
     {
+
+
+        System.out.println("Current AES length - " + JCEUtils.getAESMaxKeyLength());
+
         int connectTimeout = 0; // default = infinite
         int readTimeout = 1000;
 
@@ -92,7 +97,7 @@ public class SSLTest
         String[] sslCipherSuites = null; // Default = default for protocol
         String crlFilename = null;
         boolean showCerts = false;
-
+        boolean unlimitedJCE = false;
         if(args.length < 1)
         {
             usage();
@@ -110,6 +115,9 @@ public class SSLTest
                 break;
             else if("-no-check-certificate".equals(arg))
                 disableCertificateChecking = true;
+            else if ("-unlimited-jce".equals(arg)) {
+                unlimitedJCE = true;
+            }
             else if("-no-verify-hostname".equals(arg))
                 disableHostnameVerification = true;
             else if("-sslprotocol".equals(arg))
@@ -155,6 +163,10 @@ public class SSLTest
 
             usage();
             System.exit(1);
+        }
+
+        if (unlimitedJCE) {
+            JCEUtils.removeRestrictedCryptography();
         }
 
         if(disableHostnameVerification)
