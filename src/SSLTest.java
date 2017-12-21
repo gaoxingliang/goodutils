@@ -66,7 +66,7 @@ public class SSLTest
         System.out.println("-truststorepassword pass     Sets the password for the trust store");
         System.out.println("-truststorealgorithm alg     Sets the algorithm for the trust store");
         System.out.println("-truststoreprovider provider Sets the crypto provider for the trust store");
-
+        //System.out.println("-skip-ciphers-test           Skip the ciphers test step");
         System.out.println("-no-check-certificate        Ignores certificate errors");
         System.out.println("-no-verify-hostname          Ignores hostname mismatches");
         System.out.println("-unlimited-jce               Enable unlimited JCE");
@@ -98,6 +98,8 @@ public class SSLTest
         String crlFilename = null;
         boolean showCerts = false;
         boolean unlimitedJCE = false;
+        boolean skipCiphersTest = false;
+
         if(args.length < 1)
         {
             usage();
@@ -117,6 +119,9 @@ public class SSLTest
                 disableCertificateChecking = true;
             else if ("-unlimited-jce".equals(arg)) {
                 unlimitedJCE = true;
+            }
+            else if ("-skip-ciphers-test".equals(arg)) {
+                skipCiphersTest = true;
             }
             else if("-no-verify-hostname".equals(arg))
                 disableHostnameVerification = true;
@@ -232,6 +237,10 @@ public class SSLTest
             supportedProtocols = new ArrayList<String>(Arrays.asList(sslEnabledProtocols));
         }
 
+        if (!skipCiphersTest) {
+            // do ciphers test
+            // todo not done
+        }
         System.out.println("Testing server " + host + ":" + port);
 
         SecureRandom rand = new SecureRandom();
@@ -355,6 +364,7 @@ public class SSLTest
         System.out.println("\tsslProtocol=" + sslProtocol);
         System.out.println("\tprotocols  =" + Arrays.toString(protocolsToTry));
         System.out.println("\tciphers    =" + Arrays.toString(sslCipherSuites));
+
         Socket sock = null;
 
         try
