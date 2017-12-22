@@ -81,8 +81,8 @@ public class SSLTest
 
         System.out.println("Current AES length - " + JCEUtils.getAESMaxKeyLength());
 
-        int connectTimeout = 0; // default = infinite
-        int readTimeout = 1000;
+        int connectTimeout = 10000;
+        int readTimeout = 10000;
 
         boolean disableHostnameVerification = true;
         boolean disableCertificateChecking = true;
