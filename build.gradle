@@ -101,6 +101,23 @@ jar {
     }
 }
 
+/**
+ * fatjar demo
+ */
+task fatjar(type: Jar) {
+
+    manifest {
+        attributes 'Implementation-Title': 'goodutils',
+                'Implementation-Version': '1.0'
+    }
+    baseName = project.name
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA'
+}
+
+
+
 defaultTasks 'clean','test','jar'
 
 task build (overwrite: true ) {
