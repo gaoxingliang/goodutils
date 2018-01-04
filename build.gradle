@@ -107,7 +107,7 @@ jar {
 task fatjar(type: Jar) {
 
     manifest {
-        attributes 'Implementation-Title': 'goodutils',
+        attributes 'Implementation-Title': project.name,
                 'Implementation-Version': '1.0'
     }
     baseName = project.name
