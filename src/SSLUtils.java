@@ -17,6 +17,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import sun.security.ssl.SSLSocketImpl;
+
 import javax.net.ssl.*;
 import java.io.File;
 import java.io.FileInputStream;
@@ -132,6 +135,8 @@ public class SSLUtils
         private final String[] _sslCipherSuites;
         private final SSLSocketFactory _base;
 
+        private String expectedHost; // it's null, don't check
+
         public CustomSSLSocketFactory(SSLSocketFactory base,
                                       String[] sslEnabledProtocols,
                                       String[] sslCipherSuites)
@@ -149,6 +154,11 @@ public class SSLUtils
                 _sslCipherSuites = sslCipherSuites.clone();
         }
 
+
+        void setExpectedHost(String host) {
+            expectedHost = host;
+        }
+
         public String[] getDefaultCipherSuites() {
             return _base.getDefaultCipherSuites();
         }
@@ -164,6 +174,11 @@ public class SSLUtils
                 socket.setEnabledProtocols(_sslEnabledProtocols);
 
             socket.setEnabledCipherSuites(_sslCipherSuites);
+
+            if (s instanceof SSLSocketImpl && expectedHost != null) {
+                ((SSLSocketImpl)s).setHost(expectedHost);
+            }
+
 
             return socket;
         }

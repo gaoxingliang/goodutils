@@ -72,8 +72,10 @@ dependencies {
 
     // https://mvnrepository.com/artifact/org.snmp4j/snmp4j
     //compile group: 'org.snmp4j', name: 'snmp4j', version: '2.5.6'
+    compile group: 'org.bouncycastle', name: 'bcprov-jdk16', version: '1.46'
 
     runtime(
+            group: 'org.bouncycastle', name: 'bcprov-jdk16', version: '1.46'
     )
 
 

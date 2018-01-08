@@ -4,4 +4,5 @@ Add a support for
 `gradle fatjar`
 
 # SSLTest
-Do ssl test
+Do ssl test:<br>
+`java -cp goodutils.jar SSLTest baidu.com`

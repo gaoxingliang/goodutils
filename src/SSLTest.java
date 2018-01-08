@@ -19,6 +19,9 @@
  *  limitations under the License.
  */
 // Note this class requires [[SSLUtils.java]]
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -70,7 +73,9 @@ public class SSLTest
         System.out.println("-no-check-certificate        Ignores certificate errors");
         System.out.println("-no-verify-hostname          Ignores hostname mismatches");
         System.out.println("-unlimited-jce               Enable unlimited JCE");
-        System.out.println("-h -help --help     Shows this help message");
+        System.out.println("-sni                         Enable SNI check");
+        System.out.println("-bouncy                      Enable Bouncy Castle Crypt");
+        System.out.println("-h -help --help              Shows this help message");
     }
 
 
@@ -99,6 +104,9 @@ public class SSLTest
         boolean showCerts = false;
         boolean unlimitedJCE = false;
         boolean skipCiphersTest = false;
+
+        boolean enableSNI = false;
+        boolean enableBouncyCastle = false;
 
         if(args.length < 1)
         {
@@ -147,6 +155,11 @@ public class SSLTest
                 trustStoreAlgorithm = args[++argIndex];
             else if("-showcerts".equals(arg))
                 showCerts = true;
+            else if ("-sni".equals(arg)) {
+                enableSNI = true;
+            } else if ("-bouncy".equals(arg)) {
+                enableBouncyCastle = true;
+            }
             else if("--help".equals(arg)
                     || "-h".equals(arg)
                     || "-help".equals(arg))
@@ -156,14 +169,14 @@ public class SSLTest
             }
             else
             {
-                System.err.println("Unrecognized option: " + arg);
+                System.out.println("Unrecognized option: " + arg);
                 System.exit(1);
             }
         }
 
         if(argIndex >= args.length)
         {
-            System.err.println("Unexpected additional arguments: "
+            System.out.println("Unexpected additional arguments: "
                                + java.util.Arrays.asList(args).subList(argIndex, args.length));
 
             usage();
@@ -172,6 +185,25 @@ public class SSLTest
 
         if (unlimitedJCE) {
             JCEUtils.removeRestrictedCryptography();
+            System.out.println("After Unlimited JCE, AES length - " + JCEUtils.getAESMaxKeyLength());
+        }
+
+        if (enableBouncyCastle) {
+            try {
+                //add at runtime the Bouncy Castle Provider
+                //the provider is available only for this application
+                Security.addProvider(new BouncyCastleProvider());
+
+                //BC is the ID for the Bouncy Castle provider;
+                if (Security.getProvider("BC") == null){
+                    System.out.println("!!!Bouncy Castle provider is NOT available");
+                }
+                else{
+                    System.out.println("Aha Bouncy Castle provider is available");
+            }
+            } catch (Throwable e) {
+
+            }
         }
 
         if(disableHostnameVerification)
@@ -294,6 +326,10 @@ public class SSLTest
                                                                    rand,
                                                                    trustManagers);
 
+                if (enableSNI && sf instanceof SSLUtils.CustomSSLSocketFactory) {
+                    ((SSLUtils.CustomSSLSocketFactory)sf).setExpectedHost(host);
+                }
+
                 Socket sock = null;
 
                 try
@@ -359,6 +395,11 @@ public class SSLTest
                                                            sslCipherSuites,
                                                            rand,
                                                            trustManagers);
+
+        if (enableSNI && sf instanceof SSLUtils.CustomSSLSocketFactory) {
+            ((SSLUtils.CustomSSLSocketFactory)sf).setExpectedHost(host);
+            System.out.println("SNI enabled, expected host - " + host);
+        }
 
         System.out.println("Finally try with those supported confs:");
         System.out.println("\tsslProtocol=" + sslProtocol);
