@@ -73,8 +73,15 @@ dependencies {
     // https://mvnrepository.com/artifact/org.snmp4j/snmp4j
     //compile group: 'org.snmp4j', name: 'snmp4j', version: '2.5.6'
     compile group: 'org.bouncycastle', name: 'bcprov-jdk16', version: '1.46'
-
+    // https://mvnrepository.com/artifact/org.codehaus.groovy/groovy-all
+    compile group: 'org.codehaus.groovy', name: 'groovy-all', version: '2.4.13'
+    compile "com.google.guava:guava:18.0"
+    compile "commons-io:commons-io:2.2"
+    compile "commons-lang:commons-lang:2.6"
     runtime(
+            "com.google.guava:guava:18.0",
+            "commons-io:commons-io:2.2",
+            "commons-lang:commons-lang:2.6",
             group: 'org.bouncycastle', name: 'bcprov-jdk16', version: '1.46'
     )
 
