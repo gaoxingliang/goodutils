@@ -211,7 +211,7 @@ java -XX:+PrintGCDetails -XX:+UseConcMarkSweepGC eu.plumbr.demo.GarbageProducer
   - 找到所有存活的对象
   - 清除其他所有的东西 -可能死亡的和无用的对象
 
-第一部分, 存活对象的统计都是通过一个叫做**标记(Marking)**的过程实现的.
+第一部分, 存活对象的统计都是通过一个叫做**标记Marking**的过程实现的.
 ## **标记可达对象**
 每一个现代的GC都是从找到所有存活的对象开始工作的. 这个概念可以分好的通过下面的图解释(前面讲JVM内存布局的时候说过):
 ![marksweep](res/gcbook/mark-sweep-solve-cyclic.png)
@@ -232,10 +232,177 @@ java -XX:+PrintGCDetails -XX:+UseConcMarkSweepGC eu.plumbr.demo.GarbageProducer
 当**标记**完成狗, GC就可以继续下一步-移除不可达对象
 
 ## **移除不可达对象**
+不同的GC算法可能会常用不同的方式来移除不可达对象, 可分为以下3种:
+  - 清扫 Sweeping
+  - 压缩 Compacting
+  - 拷贝 Copying
+
+### **清扫**
+**标记和清扫Mark and Sweep**算法在概念上选用了最简单的方式来处理垃圾 - 忽略它们.这也就是说, 当标记阶段完成后, 所有被未访问到的对象说占用的空间都被认为是空闲的,可以被用来分配新的对象.
+
+这个方法需要一个所谓的**空闲列表free-list** 来记录每个空闲区间和它的大小. 管理空闲列表给对象分配增加了额外的负担. 这个方式的另一个弱点就是-有很多小的空闲区间,但是没有一个足够大的区间来分配对象. 分配还是会失败(也就是Java中的**OutOfMemoryError**)
+![free-list](res/gcbook/free-list-sweep.png)
+
+### **压缩**
+**标记,清扫,压缩Mark-Sweep-Compact**解决了前面和清扫的问题--移动所有标记了的(也就是存活的)对象到内存的最前面. 这样做的缺点就是会增加GC暂停的时间,因为我们需要拷贝所有对象到一个新的地方然后更新这些对象的引用. 这样的好处也是显而易见的-- 通过压缩操作后, 新对象的分配变得非常的简单, 只需要通过指针碰撞(pointer bumping)就可以了. 通过这样的方式, 我们总是可以知道可用空间的大小, 而且也没有了碎片问题.
+![mark-sweep-compact](res/gcbook/mark-sweep-compact.png)
 
 
+### **拷贝**
+**标记和拷贝Mark and Copy**算法与标记和压缩算法很像, 他们都会重新定位所有的存活对象. 一个重要的不同就是copy会将所有存活的对象拷贝到一个完全新的内存区域.标记和拷贝方法有一个优点就是, 它能够在标记的同时进行拷贝操作. 缺点就是, 他需要更多更大的内存空间来容纳存活的对象.
+![mark-copy](res/gcbook/mark-copy.png)
 
 # GC 算法: 实现
+现在我们已经回顾了GC算法背后的核心概念, 接下来我们会介绍特定算法的JVM实现. 一个重要的事情我们必须意识到的是, 对于大多数的JVM而言, 我们都需要2个不同的GC算法--一个用来清理年轻代, 一个用来清理老年代.
+
+你可以从JVM中绑定的一系列算法中选择. 如果你不指定, 那么就会用一个平台相关的算法作为默认. 在这个章节, 每个算法的工作原理都会被讲到.
+
+作为一个快速参考, 下面的列表可以帮你快速参考哪些算法是可以组合在一起的. 注意到这个适用于Java 8, 老的Java版本可能有所不同:
+![gc-combinations](res/gcbook/gc-combinations.png)
+如果上面的看起来很复杂, 不用担心, 现实中, 只会用到4个加粗了的组合. 其他的都被废弃了, 不支持或者在现实生活中使用不太实际. 所以下面的章节会介绍如下4种组合的GC算法实现:
+ - Serial GC (适宜用于年轻代和老年代)
+ - Parallel GC (适用于年轻代和老年代)
+ - Parallel New (年轻代) 和 Concurrent Mark and Sweep (CMS) (老年代)
+ - G1 适用于年轻代和老年代被没有分开的情况
+
+## **Serial GC**
+这个GC对年轻代使用**标记和拷贝**, 对老年代使用**标记清扫和压缩**. 正如名称所暗示的那样, 这2个收集器都是单线程的收集器, 不能并行执行任务. 这2个收集器都会触发STW, 暂停所有应用线程.
+
+这个GC算法不能发挥现代硬件中多核CPU的优势, 不管CPU有多少个核, 在GC时, 都只会使用一个核.
+可以通过下面的脚本来使用该GC算法:
+```
+java -XX:+UseSerialGC com.mypackages.MyExecutableClass
+```
+这个选项应该在只有几百M大小的堆内存以及在单核CPU环境下使用. 大多数的服务器环境都不太会是单核CPU. 所以当你在有多核的服务器上使用该选项来启动应用时, 会人为的设置一个可用的系统资源的上限. 这会导致限制的资源并不能用来降低延时或者提高吞吐量.
+
+让我们来看下使用Serial GC时, GC 日志会打印什么有用的信息. 你需用通过如下的参数来打开GC日志:
+```
+–XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps
+```
+输出与下图类似:
+![serial-gc](res/gcbook/serial-gc-log.png)
+这段简短的片段给出很多JVM内部发生的信息. 事实上,上面的片段包括2个GC事件, 一个是清理年轻代, 一个是清理整个堆. 让我们从年轻代的GC开始分析.
+
+### **Minor GC**
+下面的片段包括一次在年轻代发生的GC事件的信息:
+
+> 2015-05-26T14:45:37.987-0200<sup>1</sup>: 151.126<sup>2</sup>: [GC <sup>3</sup>(Allocation Failure<sup>4</sup>) 151.126: [DefNew<sup>5</sup>: 629119K->69888K<sup>6</sup>(629120K)<sup>7</sup>, 0.0584157 secs] 1619346K->1273247K<sup>8</sup>(2027264K)<sup>9</sup>, 0.0585007 secs<sup>10</sup>] [Times: user=0.06 sys=0.00, real=0.06 secs]<sup>11</sup>
+
+  1. *2015-05-26T14:45:37.987-0200* GC 开始时间
+  2. *151.126* GC开始时距JVM启动多少秒
+  3. *GC* 标志是Minor 还是 Full GC. 这一次是Minor GC.
+  4. *Allocation Failure* GC触发原因. 这一次是因为无法在年轻代中的任何一区分配对象导致.
+  5. *DefNew* GC收集器的名字. 这个神秘的名字代表了单线程的标记和拷贝STW收集器被用来在年轻代收集.
+  6. *629119K->69888K* 年轻代回收前和回收后的空间.
+  7. *(629120K)* 年轻代总大小
+  8. *1619346K->1273247K* 堆的回收前和回收后的空间
+  9. *2027264K* 总的可用堆空间
+  10. *0.0585007 secs* GC耗时
+  11. *[Times: user=0.06 sys=0.00, real=0.06 secs]* GC持续时间, 分为如下3类:
+          - user GC线程在GC期间所用的总的CPU时间
+          - sys  系统调用和等待系统事件的时间
+          - real 应用线程总的停顿时间. 因为Serial GC始终只有一个线程, 所以real time等于user+sys.
+
+从上面的片段, 我们可以精确了解JVM在GC过程中的内存消耗. 收集前, 总共有1619346K空间, 其中年轻代用了 629119K. 从此我们可以知道老年代用了 990227K.
+
+从后面的一系列数字, 我们可以知道, 经过这次收集后, 年轻代降低了559231K, 总的堆空间降低了346099K. 从这里我们可以知道有213132K的对象从年轻代提升到了老年代.
+
+下图给出了GC前和GC后内存使用的快照:
+![serial-gc-minor](res/gcbook/serial-gc-minor.png)
+
+### **Full GC**
+当我们理解了第一个Minor GC事件后, 让我们来看下日志中的第二个事件:
+> 2015-05-26T14:45:59.690-0200<sup>1</sup>: 172.829<sup>2</sup>: [GC (Allocation Failure) 172.829: [DefNew: 629120K->629120K(629120K), 0.0000372 secs<sup>3</sup>]172.829: [Tenured<sup>4</sup>: 1203359K- >755802K<sup>5</sup>(1398144K)<sup>6</sup>, 0.1855567 secs<sup>7</sup>] 1832479K->755802K<sup>8</sup>(2027264K)<sup>9</sup>, [Metaspace: 6741K- >6741K(1056768K)]<sup>10</sup>, 0.1856954 secs] [Times: user=0.18 sys=0.00, real=0.18 secs]<sup>11</sup>
+
+  1. *2015-05-26T14:45:59.690-0200* GC 开始时间
+  2. *172.829* GC开始时距JVM启动多少秒
+  3. *[DefNew: 629120K->629120K(629120K), 0.0000372 secs* 与前面类似, 因为分配失败Allocation Failure, 在年轻代发生了一次Minor GC. 对于这次收集, 使用DefNew收集器让年轻代的空间从629120K降到了0. 这里JVM报的事件有点问题(报年轻代还是满的), 这是JVM的bug. 这次回收耗时0.0000372秒
+  4. *Tenured* 用于老年代的垃圾回收器名字. Tenured 意味着使用了单线程的STW 标记+清扫+压缩 GC回收器.
+  5. *1203359K->755802K* 老年代回收前和回收后的空间.
+  6. *(1398144K)* 老年代总空间
+  7. *0.1855567 secs* 回收老年代所用时间
+  8. *1832479K->755802K* 堆的回收前和回收后的空间
+  9. *(2027264K)* 当前JVM堆可用总空间
+  10. *[Metaspace: 6741K->6741K(1056768K)]* 元空间的垃圾回收, 可以看见这次没有发现垃圾.
+  11. *[Times: user=0.18 sys=0.00, real=0.18 secs]* GC持续时间, 分为如下3类:
+          - user GC线程在GC期间所用的总的CPU时间
+          - sys  系统调用和等待系统事件的时间
+          - real 应用线程总的停顿时间. 因为Serial GC始终只有一个线程, 所以real time等于user+sys.
+
+与Minor GC有明显的区别, 这次GC中, 老年代和元空间也被清理了. 下图给出了GC前和GC后内存使用的快照:
+![serial-gc-full](res/gcbook/serial-gc-full.png)
+
+## **Parallel GC**
+这个GC对年轻代使用**标记和拷贝**, 对老年代使用**标记清扫和压缩**. 年轻代和老年代GC都会触发STW事件, 停止所有应用线程来执行垃圾回收. 这2个收集器在拷贝/压缩阶段都使用了多线程, 这就是为啥是'Parallel'的原因. 通过这种方式降低了垃圾回收的时间.
+
+GC时的线程数可以通过命令行参数*-XX:ParallelGCThreads=NNN*设置. 默认值是机器的核数.
+
+下面的任何一个JVM启动脚本都会选择Parallel GC:
+```
+java -XX:+UseParallelGC com.mypackages.MyExecutableClass
+java -XX:+UseParallelOldGC com.mypackages.MyExecutableClass
+java -XX:+UseParallelGC -XX:+UseParallelOldGC com.mypackages.MyExecutableClass
+```
+Parallel GC 适用于多核系统, 而且你的主要目标是提交吞吐量. 高的吞吐量是通过对系统资源的有效使用实现的:
+  - 收集时, 所有的cpu 核都会用来并行清理垃圾, 这缩短了暂停时间
+  - 在GC周期间, 收集器不会消耗任何资源.
+
+另一方面, 垃圾收集的所有阶段都不能被中断, 这些收集器当你的应用线程被暂停时,很容易有很长的暂停. 所以如果延时是你的主要目标, 你需要看看下一个GC组合.
+
+现在让我们来看下使用Parallel GC时,GC日志的输出. 下面的GC日志包含了1次Minor GC和一次Major GC:
+> 2015-05-26T14:27:40.915-0200: 116.115: [GC (Allocation Failure) [PSYoungGen: 2694440K- >1305132K(2796544K)] 9556775K->8438926K(11185152K), 0.2406675 secs] [Times: user=1.77 sys=0.01, real=0.24 secs]
+2015-05-26T14:27:41.155-0200: 116.356: [Full GC (Ergonomics) [PSYoungGen: 1305132K- >0K(2796544K)] [ParOldGen: 7133794K->6597672K(8388608K)] 8438926K->6597672K(11185152K), [Metaspace: 6745K->6745K(1056768K)], 0.9158801 secs] [Times: user=4.49 sys=0.64, real=0.92 secs]
+
+### **Minor GC**
+第一条事件是年轻代的Minor GC:
+> 2015-05-26T14:27:40.915-0200<sup>1</sup>: 116.115<sup>2</sup>: [GC <sup>3</sup>(Allocation Failure<sup>4</sup>) [PSYoungGen<sup>5</sup>: 2694440K- >1305132K<sup>6</sup>(2796544K)<sup>7</sup>] 9556775K->8438926K<sup>8</sup>(11185152K)<sup>9</sup>, 0.2406675 secs<sup>10</sup>] [Times: user=1.77 sys=0.01, real=0.24 secs]<sup>11</sup>
+
+  1. *2015-05-26T14:27:40.915-0200* GC 开始时间
+  2. *116.115* GC开始时距JVM启动多少秒
+  3. *GC* 标志是Minor 还是 Full GC. 这一次是Minor GC.
+  4. *Allocation Failure* GC触发原因. 这一次是因为无法在年轻代中的任何一区分配对象导致.
+  5. *PSYoungGen* GC收集器的名字, 这里代表了一个并行的标记拷贝 STW收集器被用来清理年轻代
+  6. *2694440K->1305132K* 年轻代回收前和回收后的空间.
+  7. *(2796544K)* 年轻代总大小
+  8. *9556775K->8438926K* 堆的回收前和回收后的空间
+  9. *(1118512K)* 总的可用堆空间
+  10. *0.2406675 secs* GC耗时
+  11. *[Times: user=1.77 sys=0.01, real=0.24 secs]* GC持续时间, 分为如下3类:
+          - user GC线程在GC期间所用的总的CPU时间
+          - sys  系统调用和等待系统事件的时间
+          - real 应用线程总的停顿时间. 对Parallel GC而言, 该值应大致等于 (user+system)/GC所用线程数.
+          - 在这个例子中,使用了8个线程. 因为有些活动没有被并行化, 所以真实值总是比计算的值大一点.
+
+所以, 简单来说, 总的堆占用在收集前是9556775K, 其中年轻代占用2694440K, 老年代也就是6862335K.收集后,年轻代降低了1389308K, 但是总的堆只降低了1117849K. 则意味着有271459K对象从年轻代提升到老年代.
+ ![parallel-gc-minor](res/gcbook/parallel-gc-minor.png)
+
+### **Full GC**
+当我们了解了Parallel GC是如何清理年轻代后, 让我们来接着看下下一条GC日志中是如何清理整个堆的:
+> 2015-05-26T14:27:41.155-0200<sup>1</sup>: 116.356<sup>2</sup>: [Full GC<sup>3</sup> (Ergonomics<sup>4</sup>) [PSYoungGen: 1305132K- >0K(2796544K)]<sup>5</sup> [ParOldGen<sup>6</sup>: 7133794K->6597672K<sup>7</sup>(8388608K)<sup>8</sup>] 8438926K->6597672K<sup>9</sup>(11185152K)<sup>10</sup>, [Metaspace: 6745K->6745K(1056768K)]<sup>11</sup>, 0.9158801 secs<sup>12</sup>] [Times: user=4.49 sys=0.64, real=0.92 secs]<sup>13</sup>
+
+  1. *2015-05-26T14:27:41.155-0200* GC 开始时间
+  2. *116.356* GC开始时距JVM启动多少秒
+  3. *Full GC* 标志这是一次Full GC. 清理整个堆
+  4. *Ergonomics* GC发生原因. 这里表示JVM内部决定现在是进行GC的合适时间.
+  5. *[PSYoungGen: 1305132K- >0K(2796544K)]* 与前面类似, 一个名叫PSYoungGen的并行标记拷贝收集器被用来收集年轻代.年轻代的占用从1305132K变为了0, 在Full GC后, 整个年轻代都空了出来.
+  6. *ParOldGen* 老年代回收器的名字. 一个名叫ParOldGen的标记+清扫+压缩的STW垃圾收集器被用来收集老年代.
+  7. *7133794K->6597672K* 老年代回收前和回收后的空间.
+  8. *(8388608K)* 老年代总空间
+  9. *8438926K->6597672K* 堆的回收前和回收后的空间
+  10. *(11185152K)* 总的可用堆空间
+  11. *[Metaspace: 6745K->6745K(1056768K)]* 元空间的垃圾回收, 可以看见这次没有发现垃圾.
+  12. *0.9158801 secs* GC耗时
+  13. *[Times: user=4.49 sys=0.64, real=0.92 secs]* GC持续时间, 分为如下3类:
+          - user GC线程在GC期间所用的总的CPU时间
+          - sys  系统调用和等待系统事件的时间
+          - real 应用线程总的停顿时间. 对Parallel GC而言, 该值应大致等于 (user+system)/GC所用线程数.
+          - 在这个例子中,使用了8个线程. 因为有些活动没有被并行化, 所以真实值总是比计算的值大一点.
+
+同样的, 与Minor GC有明显的区别, 这次GC中, 老年代和元空间也被清理了. 下图给出了GC前和GC后内存使用的快照:
+![parallel-gc-full](res/gcbook/parallel-gc-full.png)
+
+## **Concurrent Mark and Sweep**
+官方名字是"最多并发的标记和清楚垃圾回收器". 它使用[标记拷贝](#拷贝)STW算法来收集年轻代和最多并发的标记和清扫算法来清理老年代.
 
 # GC 优化: 基础
 
