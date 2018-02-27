@@ -524,17 +524,182 @@ GC日志中的一个代表一次年轻代的GC事件:
   2. *0.016/0.016 secs* 显示阶段经过的时间
   3. *[Times: user=0.02 sys=0.00, real=0.02 secs]* 这里对该阶段意义不大.因为它从开始并发标记开始,并且包含了不止并发标记完成的时间.
 
+
+**阶段4:并发可取消预清理**这也是一个并发阶段(不会停止应用线程). 该阶段尝试尽可能减轻最终重标记阶段(STW)的工作压力.该阶段的时间与很多因素有关. 因为它不停地迭代做同一件事直到有取消条件满足(比如迭代次数,总的有意义的工作量,经历时间等)
+> 2015-05-26T16:23:07.373-0200: 64.476: [CMS-concurrent-abortable-preclean-start]
+
+> 2015-05-26T16:23:08.446-0200: 65.550: [CMS-concurrent-abortable-preclean<sup>1</sup>: 0.167/1.074 secs<sup>2</sup>] [Times: user=0.20 sys=0.00, real=1.07 secs]<sup>3</sup>
+
+  1. *CMS-concurrent-abortable-preclean* 阶段名称
+  2. *0.167/1.074 secs* 阶段持续时间. 有意思的是这里user时间比clock时间小得多. 通常情况下, 我们看到real时间比user时间小, 这就意味着某些工作被并行执行所以逝去的clock时间小于使用的cpu时间. 这里我们看到-只有0.167s的cpu时间, 然后垃圾回收线程就等待了1s左右的时间(不知道等待啥), 什么也没做.
+  3. *[Times: user=0.20 sys=0.00, real=1.07 secs]* 这里对该阶段意义不大.因为它从开始并发标记开始,并且包含了不止并发标记完成的时间
+
+**阶段5:最终重标记**这是第二个也是最后一个STW阶段. 该阶段的目的是为了最后标记老年代所有存活的对象.这意味着要从与初始标记一样的GC Roots开始来表里对象, 加上所谓的脏对象(比如那些在前面并发阶段修改过自己域的对象)
+
+通常情况下, CMS会在年轻代尽可能空的情况下运行追踪标记, 以此来减少STW阶段一个接着一个的情况.
+
+这个事件看起来比前面的阶段复杂一点:
+> 2015-05-26T16:23:08.447-0200: 65.550<sup>1</sup>: [GC (CMS Final Remark<sup>2</sup>) [YG occupancy: 387920 K (613440 K)<sup>3</sup>]65.550: [Rescan (parallel) , 0.0085125 secs]<sup>4</sup>65.559: [weak refs processing, 0.0000243 secs]65.559<sup>5</sup>: [class unloading, 0.0013120 secs]65.560<sup>6</sup>: [scrub symbol table, 0.0008345 secs]65.561: [scrub string table, 0.0001759 secs<sup>7</sup>][1 CMS-remark: 10812086K(11901376K)<sup>8</sup>] 11200006K(12514816K)<sup>9</sup>, 0.0110730 secs<sup>10</sup>] [Times: user=0.06 sys=0.00, real=0.01 secs]<sup>11</sup>
+
+  1. *2015-05-26T16:23:08.447-0200: 65.550* GC开始时间, 包括绝对时间和相对JVM启动的时间
+  2. *CMS Final Remark* 阶段名称 - 标记老年代所有存活的对象包括在前面并发阶段创建和修改的引用.
+  3. *YG occupancy: 387920 K (613440 K)* 当前年轻代占用空间和容量
+  4. *Rescan (parallel) , 0.0085125 secs* 当应用被暂停时,Rescan 完成标记存活的对象. 该阶段是并行执行的, 消耗了0.0085125 secs.
+  5. *[weak refs processing, 0.0000243 secs]65.559* 第一个子阶段就是处理弱应用以及消耗的时间和时间戳.
+  6. *[class unloading, 0.0013120 secs]65.560*下一个子阶段就是卸载掉不使用的类以及消耗的时间和时间戳.
+  7. *[scrub string table, 0.0001759 secs*最后一个子阶段就是清除符号和字符串表.保留了类级别元信息以及internalized 字符串. 消耗时间也记录在内.
+  8. *10812086K(11901376K)* 该阶段完成后, 老年代的占用和容量
+  9. *11200006K(12514816K)* 该阶段完成后, 整个堆的占用和容量
+  10. *0.0110730 secs* 阶段耗时
+  11. *[Times: user=0.06 sys=0.00, real=0.01 secs]* 暂停时间.
+  
+经过5个标记阶段,老年代所有存活对象都被标记了.现在收集器将要通过清扫老年代回收这些无用对象占用的空间:
+**阶段6:并发清扫** 与应用线程并发执行, 不需要STW. 该阶段目的是清除无用对象并回收其占用空间以备将来之用.
+
+> 2015-05-26T16:23:08.458-0200: 65.561: [CMS-concurrent-sweep-start]
+
+> 2015-05-26T16:23:08.485-0200: 65.588: [CMS-concurrent-sweep<sup>1</sup>: 0.027/0.027 secs<sup>2</sup>] [Times: user=0.03 sys=0.00, real=0.03 secs]
+
+  1. *CMS-concurrent-sweep* 阶段名称 -  清扫未被标记对象以回收空间
+  2. *0.027/0.027 secs* 占用时间
+
+**阶段7:并发重置**并发执行, 重置CMS算法中的内部数据结构,以备下次回收使用
+> 2015-05-26T16:23:08.485-0200: 65.589: [CMS-concurrent-reset-start]
+
+> 2015-05-26T16:23:08.497-0200: 65.601: [CMS-concurrent-reset<sup>1</sup>: 0.012/0.012 secs<sup>2</sup>] [Times: user=0.01 sys=0.00, real=0.01 secs]<sup>3</sup>
+
+  1. *CMS-concurrent-reset* 阶段名称 - 重置CMS算法内部数据结构,以备下次收集使用
+  2. *0.012/0.012 secs* 占用时间
+
+总而言之, CMS 垃圾回收器通过将大量工作交给并发线程来做而且不需要暂停应用来减少暂停时间. 然而,它也有一些缺点, 最大的就是老年代的碎片化问题以及缺乏一个可预测的停顿时间, 这对于一些比较大的堆更为明显.
+
+## **G1 - Garbage First**
+G1的主要设计目标就是保证STW的时间和分布都可以很好的预测和配置. 事实上, Garbage-First 是一个*类实时*GC. 也就是你可以设定特定的性能要求. 你可以要求在给定的y ms中, STW的时间不能超过x ms. 比如在任何1s内都不超过5ms. G1 会尽量满足设定的目标(但不能完全肯定, 所以不是绝对实时的).
+
+为了达到这个目标, G1建立在大量的见解之上. 首先, 堆不再需要被分割进连续的2个年轻代和老年代. 取而代之的是, 堆被分为很多(典型的是2048)个小的*堆区域(heap regions)*来存储对象. 每个region都可能是Eden region, 或者Survivor region, Old region. 所有Eden和Survivor 区组合成了逻辑上的年轻代, 所有的Old region组合在一起成了老年代:
+![g1-pool](res/gcbook/g1-pool.png)
+
+这让垃圾收集器不需要每次都收集整个堆,而是每次*增量*的解决问题:每次只会有所有region集合的一个子集会被考虑, 称为*收集集合Collection set*.年轻代的所有region在每个暂停的时候都被收集,但是老年代只有一部分会被收集:
+![g1-collection-set](res/gcbook/g1-collection-set.png)
+在并发阶段的另一个新奇的事就是G1会估计每个region中包含的存活对象的个数.这被用来构建Collection set:包含最多垃圾的region总是优先被收集. 这个是名称*Garbage-first*的由来.
+
+像下面这样来使用G1 GC:
+```
+java -XX:+UseG1GC com.mypackages.MyExecutableClass
+```
+
+### **Evacuation Pause: Fully Young**
+在引用的开始阶段, G1不能从还没执行过的并发阶段知道任何额外的信息, 所以它最开始工作在*fully-young*模式.当年轻代满了后,应用相册了隔壁暂停,年轻代regions的活跃对象被拷贝到Surivior regions(任何其他空闲的region因此就变成了Survivor).
+
+拷贝的过程称为Evacuation(*译注:意为疏散*). 这与我们前面讲到的年轻代的收集器完全一样.Evacuation Pause的GC 日志非常长, 所以这里简单期间, 我们只留下了一些与第一次fully-young Evacuation Pause相关的日志. 我们随后讲到并发阶段时还会详细讲到. 除此之外, 因为日子很大, 并发阶段和其他Other阶段会在单独的段落讲到:
+> 0.134: [GC pause (G1 Evacuation Pause) (young), 0.0144119 secs]<sup>1</sup>
+
+>  [Parallel Time: 13.9 ms, GC Workers: 8]<sup>2</sup>
+
+>  ...<sup>3</sup>
+
+>  [Code Root Fixup: 0.0 ms]<sup>4</sup>
+
+>  [Code Root Purge: 0.0 ms]<sup>5</sup> [Clear CT: 0.1 ms]
+
+>  [Other: 0.4 ms]<sup>6</sup>
+
+>  ...<sup>7</sup>
+
+>  [Eden: 24.0M(24.0M)->0.0B(13.0M)<sup>8</sup>
+
+>  Survivors: 0.0B->3072.0K <sup>9</sup> 
+
+>  Heap: 24.0M(256.0M)->21.9M(256.0M)]<sup>10</sup>
+
+>  [Times: user=0.04 sys=0.04, real=0.02 secs]<sup>11</sup>
+
+  1. *0.134: [GC pause (G1 Evacuation Pause) (young), 0.0144119 secs]* G1暂停只清理年轻代的region. 这个暂停在JVM启动后134ms开始,暂停时间0.0144s.
+  2. *[Parallel Time: 13.9 ms, GC Workers: 8]* 表示有13.9ms (real time)用于后面的8个线程的GC活动
+  3. *...* 简单起见,省略了, 后面会讲到
+  4. *Code Root Fixup: 0.0 ms* 用于释放管理并发活动的数据结构, 该值应该总是0. 这是顺序执行的.
+  5. *[Code Root Purge: 0.0 ms]* 清理更多的数据结构, 应该会很快. 但不一定是0. 这是顺序执行的.
+  6. *[Other: 0.4 ms]* 混杂的其他活动时间, 其中的许多也是并行的.
+  7. *...* 后面会讲到
+  8. *[Eden: 24.0M(24.0M)->0.0B(13.0M)* 暂停前后Eden的使用量和容量
+  9. *Survivors: 0.0B->3072.0K * 暂停前后, Survivor的使用量.
+  10. *Heap: 24.0M(256.0M)->21.9M(256.0M)]* 暂停前后, 堆得使用量和容量.
+  11. *[Times: user=0.04 sys=0.04, real=0.02 secs]*GC持续时间, 分为如下3类:
+                  - user GC线程在GC期间所用的总的CPU时间
+                  - sys  系统调用和等待系统事件的时间
+                  - real 应用线程总的停顿时间. 该值应大致等于 (user+system)/GC所用线程数.
+                  - 在这个例子中,使用了8个线程. 因为有些活动没有被并行化, 所以真实值总是比计算的值大一点.
+
+大多数繁重的工作都被多个专有GC线程完成, 下面的日志描述了它们的活动:
+> [Parallel Time: 13.9 ms, GC Workers: 8]1
+
+>   [GC Worker Start (ms) Min: 134.0, Avg: 134.1, Max: 134.1, Diff: 0.1]
+
+>   [Ext Root Scanning (ms): Min: 0.1, Avg: 0.2, Max: 0.3, Diff: 0.2, Sum: 1.2] 
+
+>   [Update RS (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.0]
+
+>   >  [Processed Buffers: Min: 0, Avg: 0.0, Max: 0, Diff: 0, Sum: 0]
+
+>   [Scan RS (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.0]
+
+>   [Code Root Scanning (ms): Min: 0.0, Avg: 0.0, Max: 0.2, Diff: 0.2, Sum: 0.2]
+
+>   [Object Copy (ms): Min: 10.8, Avg: 12.1, Max: 12.6, Diff: 1.9, Sum: 96.5]
+
+>   [Termination (ms6: Min: 0.8, Avg: 1.5, Max: 2.8, Diff: 1.9, Sum: 12.2]
+
+>   >   [Termination Attempts: Min: 173, Avg: 293.2, Max: 362, Diff: 189, Sum: 2346]
+
+
+>   [GC Worker Other (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.1]
+
+>   [GC Worker Total (ms): Min: 13.7, Avg: 13.8, Max: 13.8, Diff: 0.1, Sum: 110.2]
+
+>   [GC Worker End (ms): Min: 147.8, Avg: 147.8, Max: 147.8, Diff: 0.0]]       
+
+  1. **
+  2. **
+  3. **
+  4. **
+  5. **
+  6. **
+  7. **
+  8. **
+  9. **
+  10. **
+  11. **
+  
+  
 <sup></sup>
 
-**阶段4:并发可取消预清理**
+
+  1. **
+  2. **
+  3. **
+  4. **
+  5. **
+  6. **
+  7. **
+  8. **
+  9. **
+  10. **
+  11. **
 
 
-**阶段5:最终重标记**
-**阶段6:编发清扫**
-**阶段7:并发重置**
 
 # GC 优化: 基础
 
 # GC 优化: 工具
 
 # GC 优化: 实践
+
+
+
+# 参考
+## user/sys/real时间
+[link](https://blog.gceasy.io/2016/04/06/gc-logging-user-sys-real-which-time-to-use/)
+- Real is wall clock time – time from start to finish of the call. This is all elapsed time including time slices used by other processes and time the process spends blocked (for example if it is waiting for I/O to complete).
+- User is the amount of CPU time spent in user-mode code (outside the kernel) within the process. This is only actual CPU time used in executing the process. Other processes and time the process spends blocked do not count towards this figure.
+- Sys is the amount of CPU time spent in the kernel within the process. This means executing CPU time spent in system calls within the kernel, as opposed to library code, which is still running in user-space. Like ‘user’, this is only CPU time used by the process.
+- User+Sys will tell you how much actual CPU time your process used. Note that this is across all CPUs, so if the process has multiple threads, it could potentially exceed the wall clock time reported by Real.
