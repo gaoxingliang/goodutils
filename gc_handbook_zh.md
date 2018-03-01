@@ -589,7 +589,7 @@ java -XX:+UseG1GC com.mypackages.MyExecutableClass
 ```
 
 ### **Evacuation Pause: Fully Young**
-在引用的开始阶段, G1不能从还没执行过的并发阶段知道任何额外的信息, 所以它最开始工作在*fully-young*模式.当年轻代满了后,应用相册了隔壁暂停,年轻代regions的活跃对象被拷贝到Surivior regions(任何其他空闲的region因此就变成了Survivor).
+在引用的开始阶段, G1不能从还没执行过的并发阶段知道任何额外的信息, 所以它最开始工作在*fully-young*模式.当年轻代满了后,应用线程被暂停,年轻代regions的活跃对象被拷贝到Surivior regions(任何其他空闲的region因此就变成了Survivor).
 
 拷贝的过程称为Evacuation(*译注:意为疏散*). 这与我们前面讲到的年轻代的收集器完全一样.Evacuation Pause的GC 日志非常长, 所以这里简单期间, 我们只留下了一些与第一次fully-young Evacuation Pause相关的日志. 我们随后讲到并发阶段时还会详细讲到. 除此之外, 因为日子很大, 并发阶段和其他Other阶段会在单独的段落讲到:
 > 0.134: [GC pause (G1 Evacuation Pause) (young), 0.0144119 secs]<sup>1</sup>
@@ -631,11 +631,11 @@ java -XX:+UseG1GC com.mypackages.MyExecutableClass
                   - 在这个例子中,使用了8个线程. 因为有些活动没有被并行化, 所以真实值总是比计算的值大一点.
 
 大多数繁重的工作都被多个专有GC线程完成, 下面的日志描述了它们的活动:
-> [Parallel Time: 13.9 ms, GC Workers: 8]1
+> [Parallel Time: 13.9 ms, GC Workers: 8]<sup>1</sup>
 
->   [GC Worker Start (ms) Min: 134.0, Avg: 134.1, Max: 134.1, Diff: 0.1]
+>   [GC Worker Start (ms)<sup>2</sup>: Min: 134.0, Avg: 134.1, Max: 134.1, Diff: 0.1]
 
->   [Ext Root Scanning (ms): Min: 0.1, Avg: 0.2, Max: 0.3, Diff: 0.2, Sum: 1.2] 
+>   [Ext Root Scanning (ms)<sup>3</sup>: Min: 0.1, Avg: 0.2, Max: 0.3, Diff: 0.2, Sum: 1.2] 
 
 >   [Update RS (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.0]
 
@@ -643,34 +643,59 @@ java -XX:+UseG1GC com.mypackages.MyExecutableClass
 
 >   [Scan RS (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.0]
 
->   [Code Root Scanning (ms): Min: 0.0, Avg: 0.0, Max: 0.2, Diff: 0.2, Sum: 0.2]
+>   [Code Root Scanning (ms)<sup>4</sup>: Min: 0.0, Avg: 0.0, Max: 0.2, Diff: 0.2, Sum: 0.2]
 
->   [Object Copy (ms): Min: 10.8, Avg: 12.1, Max: 12.6, Diff: 1.9, Sum: 96.5]
+>   [Object Copy (ms)<sup>5</sup>: Min: 10.8, Avg: 12.1, Max: 12.6, Diff: 1.9, Sum: 96.5]
 
->   [Termination (ms6: Min: 0.8, Avg: 1.5, Max: 2.8, Diff: 1.9, Sum: 12.2]
+>   [Termination (ms)<sup>6</sup>: Min: 0.8, Avg: 1.5, Max: 2.8, Diff: 1.9, Sum: 12.2]
 
->   >   [Termination Attempts: Min: 173, Avg: 293.2, Max: 362, Diff: 189, Sum: 2346]
+>   >   [Termination Attempts<sup>7</sup>: Min: 173, Avg: 293.2, Max: 362, Diff: 189, Sum: 2346]
 
 
->   [GC Worker Other (ms): Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.1]
+>   [GC Worker Other (ms)<sup>8</sup>: Min: 0.0, Avg: 0.0, Max: 0.0, Diff: 0.0, Sum: 0.1]
 
->   [GC Worker Total (ms): Min: 13.7, Avg: 13.8, Max: 13.8, Diff: 0.1, Sum: 110.2]
+>   [GC Worker Total (ms)<sup>9</sup>: Min: 13.7, Avg: 13.8, Max: 13.8, Diff: 0.1, Sum: 110.2]
 
->   [GC Worker End (ms): Min: 147.8, Avg: 147.8, Max: 147.8, Diff: 0.0]]       
+>   [GC Worker End (ms)<sup>10</sup>: Min: 147.8, Avg: 147.8, Max: 147.8, Diff: 0.0]]       
 
-  1. **
-  2. **
-  3. **
-  4. **
-  5. **
-  6. **
-  7. **
-  8. **
-  9. **
-  10. **
-  11. **
+  1. *[Parallel Time: 13.9 ms, GC Workers: 8]* 表明下面的活动耗时13.9ms(clock), 由8个线程并行执行.
+  2. *GC Worker Start (ms)* GC开始工作时间. 与暂停开始时间对应, 如果Min和Max相差很大,可能意味着(1)GC线程过多.或者(2)该机器上有其他的进程从GC进程*盗取*了很多cpu时间.
+  3. *Ext Root Scanning (ms)* 扫描其他Roots(非堆)消耗了多少时间. 包括类加载器, JNI应用, JVM System Roots. 单位是clock 时间. "Sum"是cpu 时间.
+  4. *Code Root Scanning (ms)* 扫描从实际代码(本地变量)引出的Roots的时间.
+  5. *Object Copy (ms)* 从收集的regions里面拷贝存活的对象消耗的时间
+  6. *Termination (ms)* GC workers用时多久来保证可以停止下来而且没有更多的事情需要做. 然后真的停止下来.
+  7. *Termination Attempts* GC workers尝试终止的次数. 如果worker发现还有更多的工作需要做时,就尝试停止就被认为是一次失败的终止尝试. 因为它终止的太早了.
+  8. *GC Worker Other (ms)* 其他混杂的活动的时间. 没有在日志中体现的阶段.
+  9. *GC Worker Total (ms)* workers工作的总时间.
+  10. *GC Worker End (ms)* workers 停止工作的时间戳. 正常情况他们应该大致相等. 否则意味着有太多的线程hangs或者有噪声.
   
+
+除此之外, 在Evacuation pause期间,有一些其他混杂的活动. 这里我们只会涉及其中的一部分. 其他的会在后面讲到.
+
+> [Other: 0.4 ms]<sup>1</sup>
+>   [Choose CSet: 0.0 ms]
+>   [Ref Proc: 0.2 ms]<sup>2</sup>
+>   [Ref Enq: 0.0 ms]<sup>3</sup>
+>   [Redirty Cards: 0.1 ms] [Humongous Register: 0.0 ms] [Humongous Reclaim: 0.0 ms]
+>   [Free CSet: 0.0 ms]<sup>4</sup>
+
+  1. *[Other: 0.4 ms]* 其他活动的耗时, 大多数都是并行的.
+  2. *[Ref Proc: 0.2 ms]* 处理非强引用的时间: 清理或者决定是否需要清理
+  3. *[Ref Enq: 0.0 ms]* 将非强引用放入对应的ReferenceQueue的时间.
+  4. *[Free CSet: 0.0 ms]* 返回收集集合中的释放了的region的时间. 这些集合变为空闲可用.
   
+### **并发标记** 
+G1构建于前面章节的很多概念之上. 所以在继续之前,请确保你对前面的知识有充分的理解.虽然有很多方法, 但是并发标记的目标却是类似的. G1并发标记使用了一个叫Snapshot-At-The-Beginning/SATB的方法在标记阶段的开始来标记所有存活的对象, 即便它们一会儿会变成垃圾. 关于哪些对象是存活的信息可以用来构建每个region的存活统计, 以便选出高效的回收集合.
+这些信息随后也被用来在老年代上进行垃圾回收. 如果标记发现某个region只有垃圾或者在老年代的STW evacuation pause阶段, 那么它可以完全并行.
+
+并发标记在整个堆占用足够大时开始执行. 默认值是45%, 可以通过JVM选项**InitiatingHeapOccupancyPercent**设置. 与CMS类似, G1中的并发标记也包含很多阶段, 其中一些是完全并行的, 其中一些需要暂停应用线程.
+
+
+**阶段1:初始标记Initial Mark**  这个阶段会标记从GC roots直接可达的对象, 在CMS中, 它需要一个单独的STW暂停, 但是在G1中, 它一般都在Evacuation Pause 阶段运行(*译注:原文piggy-backed on an Evacuation Pause*), 所以它的副作用很小. 从GC日志上可以看到在Evacuation Pause有一个额外的*(initial-mark)*标记
+
+> 1.631: [GC pause (G1 Evacuation Pause) (young) (initial-mark), 0.0062656 secs]
+
+ 
 <sup></sup>
 
 
