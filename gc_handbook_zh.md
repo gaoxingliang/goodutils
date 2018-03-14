@@ -885,28 +885,38 @@ GC的时延目标都是从一般的时延需求得来的.一般的时延需求�
 开始之前, 看看我们的测试代码:
 ```
 //imports 省略了
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
+
 public class Producer implements Runnable {
-private static ScheduledExecutorService executorService = Executors.newScheduledThreadPool(2);
-private Deque<byte[]> deque;
-  private int objectSize;
-  private int queueSize;
-public Producer(int objectSize, int ttl) { this.deque = new ArrayDeque<byte[]>(); this.objectSize = objectSize; this.queueSize = ttl * 1000;
-}
-@Override
-  public void run() {
-    for (int i = 0; i < 100; i++) {
-      deque.add(new byte[objectSize]);
-      if (deque.size() > queueSize) {
-        deque.poll();
-      }
-} }
-public static void main(String[] args) throws InterruptedException { executorService.scheduleAtFixedRate(new Producer(200 * 1024 * 1024 / 1000, 5), 0,
-100, TimeUnit.MILLISECONDS);
-executorService.scheduleAtFixedRate(new Producer(50 * 1024 * 1024 / 1000, 120), 0,
-100, TimeUnit.MILLISECONDS);
-    TimeUnit.MINUTES.sleep(10);
-    executorService.shutdownNow();
-}
+    private static ScheduledExecutorService executorService = Executors.newScheduledThreadPool(2);
+    private Deque<byte[]> deque;
+    private int objectSize;
+    private int queueSize;
+
+    public Producer(int objectSize, int ttl) {
+        this.deque = new ArrayDeque<byte[]>(); this.objectSize = objectSize; this.queueSize = ttl * 1000;
+    }
+
+    @Override
+    public void run() {
+        for (int i = 0; i < 100; i++) {
+            deque.add(new byte[objectSize]);
+            if (deque.size() > queueSize) {
+                deque.poll();
+            }
+        }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        executorService.scheduleAtFixedRate(new Producer(200 * 1024 * 1024 / 1000, 5), 0,
+                100, TimeUnit.MILLISECONDS);
+        executorService.scheduleAtFixedRate(new Producer(50 * 1024 * 1024 / 1000, 120), 0,
+                100, TimeUnit.MILLISECONDS);
+        TimeUnit.MINUTES.sleep(10);
+        executorService.shutdownNow();
+    }
 }
 ```
 
@@ -917,7 +927,24 @@ executorService.scheduleAtFixedRate(new Producer(50 * 1024 * 1024 / 1000, 120), 
 -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps
 ```
 
+我们很快可以从GC日志中看到GC的影响:
+> 2015-06-04T13:34:16.119-0200: 1.723: [GC (Allocation Failure) [PSYoungGen: 114016K- >73191K(234496K)] 421540K->421269K(745984K), 0.0858176 secs] [Times: user=0.04 sys=0.06, real=0.09 secs]
 
+> 2015-06-04T13:34:16.738-0200: 2.342: [GC (Allocation Failure) [PSYoungGen: 234462K- >93677K(254976K)] 582540K->593275K(766464K), 0.2357086 secs] [Times: user=0.11 sys=0.14, real=0.24 secs]
+  
+>  2015-06-04T13:34:16.974-0200: 2.578: [Full GC (Ergonomics) [PSYoungGen: 93677K- >70109K(254976K)] [ParOldGen: 499597K->511230K(761856K)] 593275K->581339K(1016832K), [Metaspace: 2936K->2936K(1056768K)], 0.0713174 secs] [Times: user=0.21 sys=0.02, real=0.07 secs]
+
+从日志中的信息, 我们可以开始来从3个不同的目标来尝试改善现状:
+1. 保证最坏情况下GC暂停不会超过预定的阈值
+2. 保证应用线程中的暂停时间不会超过预定的阈值
+3. 降低使用的设备开销的同时还能达到合理的时延或/和吞吐量.
+
+在3总不同的配置下,跑了10分钟后的统计结果如下:
+
+| Command | Description |
+| --- | --- |
+| git status | List all new or modified files |
+| git diff | Show file differences that haven't been staged |
 
 # GC 优化: 工具
 ### 大对象
