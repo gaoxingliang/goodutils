@@ -941,10 +941,11 @@ public class Producer implements Runnable {
 
 在3总不同的配置下,跑了10分钟后的统计结果如下:
 
-| Command | Description |
-| --- | --- |
-| git status | List all new or modified files |
-| git diff | Show file differences that haven't been staged |
+| 堆 | GC算法 | 有用工作时间 | 最长暂停 |
+| --- | --- | --- | --- |
+| -Xmx12g | -XX:+UseConcMarkSweepGC | 89.8% | 560 ms |
+| -Xmx12g | -XX:+UseParallelGC | 91.5% | 1,104 ms |
+| -Xmx8g | -XX:+UseConcMarkSweepGC | 66.3% | 1,610 ms |
 
 # GC 优化: 工具
 ### 大对象
