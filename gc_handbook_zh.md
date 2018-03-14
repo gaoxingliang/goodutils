@@ -960,6 +960,7 @@ public class Producer implements Runnable {
 | -Xmx12g | -XX:+UseConcMarkSweepGC | 89.8% | **560 ms** |
 | -Xmx12g | -XX:+UseParallelGC | 91.5% | 1,104 ms |
 | -Xmx8g | -XX:+UseConcMarkSweepGC | 66.3% | 1,610 ms |
+
 我们可以看到,已经有一个组合已经满足了配置(**560ms**). 使用如下的选项运行的应用:
 ```
 java -Xmx12g -XX:+UseConcMarkSweepGC Producer
@@ -995,6 +996,7 @@ java -Xmx12g -XX:+UseParallelGC Producer
 | -Xmx12g | -XX:+UseConcMarkSweepGC | 89.8% | 560 ms |
 | -Xmx12g | -XX:+UseParallelGC | 91.5% | 1,104 ms |
 | **-Xmx8g** | -XX:+UseConcMarkSweepGC | 66.3% | 1,610 ms |
+
 这个应用可以通过如下配置运行:
 ```
 java -Xmx8g -XX:+UseConcMarkSweepGC Producer
