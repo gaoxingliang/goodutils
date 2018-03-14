@@ -957,9 +957,9 @@ public class Producer implements Runnable {
 再回顾下我们前面的3组测试结果:
 | 堆 | GC算法 | 有用工作时间 | 最长暂停 |
 | --- | --- | --- | --- |
-| -Xmx12g | -XX:+UseConcMarkSweepGC | 89.8% | **560 ms** |
-| -Xmx12g | -XX:+UseParallelGC | 91.5% | 1,104 ms |
-| -Xmx8g | -XX:+UseConcMarkSweepGC | 66.3% | 1,610 ms |
+| -Xmx12g | -XX:+UseConcMarkSweepGC | 89.8% | **560ms** |
+| -Xmx12g | -XX:+UseParallelGC | 91.5% | 1104ms |
+| -Xmx8g | -XX:+UseConcMarkSweepGC | 66.3% | 1610ms |
 
 我们可以看到,已经有一个组合已经满足了配置(**560ms**). 使用如下的选项运行的应用:
 ```
@@ -974,9 +974,9 @@ java -Xmx12g -XX:+UseParallelGC Producer
 ```
 | 堆 | GC算法 | 有用工作时间 | 最长暂停 |
 | --- | --- | --- | --- |
-| -Xmx12g | -XX:+UseConcMarkSweepGC | 89.8% | 560 ms |
-| -Xmx12g | -XX:+UseParallelGC | **91.5%** | 1,104 ms |
-| -Xmx8g | -XX:+UseConcMarkSweepGC | 66.3% | 1,610 ms |
+| -Xmx12g | -XX:+UseConcMarkSweepGC | 89.8% | 560ms |
+| -Xmx12g | -XX:+UseParallelGC | **91.5%** | 1104ms |
+| -Xmx8g | -XX:+UseConcMarkSweepGC | 66.3% | 1610ms |
 
 我们可以看到8.5%的CPU被GC占用, 然后剩余91.5%的计算能力用于真实工作. 为了简单,我们会忽略Saft points. 现在我们来看下:
 1. 每个任务在一个核上需要100ms
@@ -993,9 +993,9 @@ java -Xmx12g -XX:+UseParallelGC Producer
 
 | 堆 | GC算法 | 有用工作时间 | 最长暂停 |
 | --- | --- | --- | --- |
-| -Xmx12g | -XX:+UseConcMarkSweepGC | 89.8% | 560 ms |
-| -Xmx12g | -XX:+UseParallelGC | 91.5% | 1,104 ms |
-| **-Xmx8g** | -XX:+UseConcMarkSweepGC | 66.3% | 1,610 ms |
+| -Xmx12g | -XX:+UseConcMarkSweepGC | 89.8% | 560ms |
+| -Xmx12g | -XX:+UseParallelGC | 91.5% | 1104ms |
+| **-Xmx8g** | -XX:+UseConcMarkSweepGC | 66.3% | 1610ms |
 
 这个应用可以通过如下配置运行:
 ```
@@ -1019,6 +1019,31 @@ java -Xmx8g -XX:+UseConcMarkSweepGC Producer
 计算后的指标包括引用的分配率和提升率. 在这章中,我们主要会见到获取原始数据的方式. 关于计算数据相关内容会在后面讨论常见GC性能问题时讲到.
 
 ## **JMX API**
+获取GC相关信息最基础的方法就是通过标准[JMX API](https://docs.oracle.com/javase/tutorial/jmx/index.html).这也是JVM暴露内部信息和运行状态的标准方式.你可以通过在同一JVM内的编程获取或者通过JMX clients获取.
+有2个很有名的JMX clients: [jconsole](https://docs.oracle.com/javase/7/docs/technotes/guides/management/jconsole.html)和[JVisualVM](https://docs.oracle.com/javase/7/docs/technotes/tools/share/jvisualvm.html)(需要安装对应的插件). 这2个工具都是标准JDK分发的一部分. 所以开始很简单. 如果你运行的是JDK 7u40以后的版本,还有一个绑定的三方工具[Java Mission Control](http://www.oracle.com/technetwork/java/javaseproducts/mission-control/java-mission-control-1998576.html)也可以.
+
+所有的JMX clients都是在外部连接到目标JVM的独立应用. 目标JVM可以是本地的同一机器上的应用或者远程的. 对于远程应用, JVM需要精确指定允许远程JMX连接才行. 这可以通过如下选项来指定端口:
+```
+java -Dcom.sun.management.jmxremote.port=5432 com.yourcompanyYourApp
+```
+在上面的例子中,JVM会打开5432端口用于JMX连接.
+
+在连接到JVM后,你可以导航到MBeans李彪,选择"java/lang/GarbageCollector". 下面的2张截图分别显示JVisualVM和Java Mission Control连接:
+![jvisualvm](res/gcbook/jvisualvm.png)
+![jmc](res/gcbook/jmc.png)
+
+正如截图所示,有2个GC收集器. 一个负责年轻代,一个负责老年代. 元素的名字对应着收集器的名字. 从截图中,我们可以看到这个JVM年轻代用的是ParallelNew 收集器, 老年代用的是CMS.
+
+对于每个收集器,JMX API会暴露如下信息:
+- CollectionCount - 当前收集器收集的次数
+- CollectionTime - 当前收集器累计运行时间. 这是所有GC事件的累计wall time. (可以参考文末参考)
+- LastGcInfo - 上次垃圾回收的详细信息. 详细信息包括事件的持续时间,开始时间以及不同内存池收集前后的使用量
+- MemoryPoolNames - 这个垃圾收集器管理的内存池的名称
+- Name - 垃圾收集器的名字
+- ObjectName - 当前MBean名称, 与JMX规定对应
+- Valid - 当前JVM是否可用该收集器. 个人从未看到除了true以外的别的值.
+
+个人经验, 这个信息并不足以判断GC效率. 它的唯一用途就是你希望自己获取关于GC事件的通知. 这总场景非常少, 你会在后面看到我们还有更好的方式来观测GC活动.
 
 ## **JVisualVM**
 
