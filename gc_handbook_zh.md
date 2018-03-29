@@ -1043,11 +1043,39 @@ java -Dcom.sun.management.jmxremote.port=5432 com.yourcompanyYourApp
 - ObjectName - 当前MBean名称, 与JMX规定对应
 - Valid - 当前JVM是否可用该收集器. 个人从未看到除了true以外的别的值.
 
-个人经验, 这个信息并不足以判断GC效率. 它的唯一用途就是你希望自己获取关于GC事件的通知. 这总场景非常少, 你会在后面看到我们还有更好的方式来观测GC活动.
+个人经验, 这个信息并不足以判断GC效率. 它的唯一用途就是你希望自己获取关于GC事件的通知. 这种场景非常少, 你会在后面看到我们还有更好的方式来观测GC活动.
 
 ## **JVisualVM**
+[JVisualVM](https://docs.oracle.com/javase/7/docs/technotes/tools/share/jvisualvm.html)在一般的JMX client基础上添加一个而外的插件[VisualGC](http://www.oracle.com/technetwork/java/visualgc-136680.html), 并通过它提供了一个GC事件的实时视图和JVM不同内存区域的实时占用.
+
+VisualGC 插件最常见的场景就是监控本地运行的应用. 当一个应用开发者或者性能专家想通过一种简单的方式来获取应用测试期间GC性能的直观信息的时候,一般也会使用VisualGC.
+![visualgc](res/gcbook/visualgc.png)
+在图的左边,你可以看见不同内存池的占用:Metaspace/持久代, 老年代, Eden区和2个Survivor区.
+在图的右边,前两个图展示了JIT编译时间和class加载时间.紧接着的6个图展示了不同内存池使用空间的历史数据,么个内存池的GC收集次数和GC的累加时间. 每个内存池的当前大小,峰值使用和最大大小都显示出来了.
+
+最下边是年轻代当前对象年龄的分布情况. 关于对象晋升的监控脱离了本章的内容,这里就不展开了.
+
+与纯JMX工具相比, JVisualVM上的VisualGC 插件提供了对JVM更好的监控视图, 所以当你只有2个工具的时候, 你应该优先选择后者. 如果你可以使用其他除本章的工具之外的工具, 请继续读下去. 别的选择可能给你更多的信息和更好的展示, 但是JVisualVM更适合于这种特殊场景下性能优化--对象分配优化.
+
 
 ## **jstat**
+[jstat](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/jstat.html) 也是标准JDK分发中的一个部分(Java VM statistics monitoring). 这个命令行工具可以用来获取当前运行JVM的指标. JVM可以是本地也可以是远端的.jstat支持的所有指标可以通过运行*jstat -options* 来获得. 下面是最常用的选项:
+| 选项 | 显示信息 |
+| --- | --- |
+| class | 显示类加载统计  |
+| compiler | 显示JIT编译器统计 |
+| gc | GC统计 |
+| gccapacity | 分代空间容量统计 |
+| gccause | 与gcutil类似,GC信息summary信息和最近的一次和当前(如果有)GC时间的触发原因 |
+| gcnew | 年轻代统计 |
+| gcnewcapacity | 年轻代大小和对应空间的统计 |
+| gcold | 老年代和持久代统计 |
+| gcoldcapacity | 老年代大小统计 |
+| gcpermcapacity | 持久代大小统计 |
+| gcutil | gc summary信息 |
+| printcompilation | gc summary信息 |
+
+
 
 ## **GC 日志**
 
