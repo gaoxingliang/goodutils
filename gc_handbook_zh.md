@@ -1060,8 +1060,9 @@ VisualGC 插件最常见的场景就是监控本地运行的应用. 当一个应
 
 ## **jstat**
 [jstat](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/jstat.html) 也是标准JDK分发中的一个部分(Java VM statistics monitoring). 这个命令行工具可以用来获取当前运行JVM的指标. JVM可以是本地也可以是远端的.jstat支持的所有指标可以通过运行*jstat -options* 来获得. 下面是最常用的选项:
+
 | 选项 | 显示信息 |
-| --- | --- |
+| ----------------- | ------------------------------------------------------ |
 | class | 显示类加载统计  |
 | compiler | 显示JIT编译器统计 |
 | gc | GC统计 |
