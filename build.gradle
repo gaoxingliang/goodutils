@@ -78,11 +78,17 @@ dependencies {
     compile "com.google.guava:guava:18.0"
     compile "commons-io:commons-io:2.2"
     compile "commons-lang:commons-lang:2.6"
+
+    // https://mvnrepository.com/artifact/org.jsoup/jsoup
+    compile group: 'org.jsoup', name: 'jsoup', version: '1.11.2'
+// https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient
+    compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.5'
+
     runtime(
             "com.google.guava:guava:18.0",
             "commons-io:commons-io:2.2",
             "commons-lang:commons-lang:2.6",
-            group: 'org.bouncycastle', name: 'bcprov-jdk16', version: '1.46'
+            "org.bouncycastle:bcprov-jdk16:1.46"
     )
 
 
