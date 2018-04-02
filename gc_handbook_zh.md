@@ -1091,9 +1091,30 @@ VisualGC 插件最常见的场景就是监控本地运行的应用. 当一个应
 - 这4次FullGC已经占用了1秒中的大多数时间.与第一行相比,FullGC运行了928ms或者**92.8%的时间** 
 - 与此同时,从OC和OU列可以看出,当4次收集完成后, 老年代**总空间OC**169344.0KB依然有169344.2KB**被占用** *译注,这里数据有问题, OC应该大于OU*. 在928ms内清理了800bytes是不正常的.
 
+只看了jstat输出的前2行,我们知道这个应用目前的状况非常糟糕.分析后面的几行后,我们确认了这个问题还在持续发生.
 
+JVM几乎已经停滞了, 因为GC消耗了90%的计算资源. 就算是在进行完所有的清理工作后, 老年代依然还有很高的占用. 后面的分析会确定这个事实. 因为这个应用在一分钟后发生[java.lang.OutOfMemoryError: GC overhead limit exceeded](https://plumbr.io/outofmemoryerror/gc-overhead-limit-exceeded)而刮掉了.
+
+从上面的例子可以看出, jstat可以快速反映出JVM的健康状况,尤其是在GC异常的时候. 作为一般的指导原则, 可以根据下面的现象来快速分析jstat的输出:
+- 最后一列GCT的变化与总时间Timestamp的变化, 可以看出当前是否有超负荷GC发生. 如果你看到每一秒钟,与总时间相比,GCT增加了很多,那么有超负荷GC发生. GC开销是否过多取决于你的应用, 而且应该根据需要满足的性能要求得出. 但是一个基本要求是,该值不应该超过10%.
+- YGC列和FGC列的快速改变表明了young gc和Full gc可能太过频繁. 如此多的STW事件也会给应用的吞吐量造成影响.
+- 当你看到当FGC列增加了,但是你却没有看到老年代的OU列与OC列基本相等,OU也没有下降,那么这可能是GC性能很差的征兆.
 
 ## **GC 日志**
+GC相关信息的下一个来源就是GC日志了. 因为内嵌在JVM中, 所以GC日志(大多数情况下)可以给你关于GC活动最有用和复杂的概览视图.GC日志是最标准的,应该被当做GC衡量和优化的终极可信源头.
+GC日志是明文的,可以打印到标准输出流或者重定向到一个文件. 有很多关于GC日志的JVM选项. 比如,你想看到在每次GC事件期间, 应用线程被暂停的时间,你可以使用(*-XX:+PrintGCApplicationStoppedTime*)又或者你想看到不同类型应用被GC的信息,你可以使用(*-XX:+PrintReferenceGC*).
+
+每个JVM最少的应该被记录的信息可以通过下面的启动脚本实现:
+
+```
+-XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintGCDetails -Xloggc:<filename>
+```
+
+这个会让JVM打印每个GC时间的时间戳以及信息到文件中. 具体的信息与采用具体的GC算法相关. 当使用Parallel GC时,输出应该像下面这样:
+![parallel-gc-output](res/gcbook/parallel-gc-output.png)
+
+不同的格式我们在 [GC算法实现](#GC 算法: 实现) 中讲过, 所以如果你不熟悉的话,你应该先看下这个章节. 如果你已经可以翻译上面的输出, 那么你可以发现:
+- 
 
 ## **GC Viewer**
 
