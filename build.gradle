@@ -61,6 +61,7 @@ sourceSets {
             srcDir 'src'
         }
         resources {
+            srcDir 'src'
         }
     }
 }
@@ -69,28 +70,19 @@ sourceSets {
 //--------------------------------- Dependencies definition ---------------------------------
 
 dependencies {
-
-    // https://mvnrepository.com/artifact/org.snmp4j/snmp4j
-    //compile group: 'org.snmp4j', name: 'snmp4j', version: '2.5.6'
-    compile group: 'org.bouncycastle', name: 'bcprov-jdk16', version: '1.46'
-    // https://mvnrepository.com/artifact/org.codehaus.groovy/groovy-all
+    compile "org.bouncycastle:bcprov-jdk16:1.46"
     //compile group: 'org.codehaus.groovy', name: 'groovy-all', version: '2.4.13'
     compile "com.google.guava:guava:18.0"
     compile "commons-io:commons-io:2.2"
+    compile "commons-cli:commons-cli:1.4"
     compile "commons-lang:commons-lang:2.6"
-
-    // https://mvnrepository.com/artifact/org.jsoup/jsoup
-    compile group: 'org.jsoup', name: 'jsoup', version: '1.11.2'
-// https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient
-    compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.5'
-
-    runtime(
-            "com.google.guava:guava:18.0",
-            "commons-io:commons-io:2.2",
-            "commons-lang:commons-lang:2.6",
-            "org.bouncycastle:bcprov-jdk16:1.46"
-    )
-
+    compile "org.jsoup:jsoup:1.11.2"
+    compile "org.apache.httpcomponents:httpclient:4.5.5"
+    compile "org.apache.logging.log4j:log4j-api:2.5"
+    compile "org.apache.logging.log4j:log4j-core:2.5"
+    // https://mvnrepository.com/artifact/dom4j/dom4j
+    compile group: 'dom4j', name: 'dom4j', version: '1.6.1'
+    compile group: 'org.json', name: 'json', version: '20180130'
 
 }
 
