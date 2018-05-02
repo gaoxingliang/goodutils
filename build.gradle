@@ -108,6 +108,27 @@ jar {
     }
 }
 
+task printDependencies << {
+    String projectName =  project.getProperties().get("name")
+    BufferedWriter bw = null
+    try {
+        File file = new File(projectName + "-dependencies.txt")
+        bw = new BufferedWriter(new FileWriter(file))
+        configurations.runtime.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+            def id = artifact.moduleVersion.id
+            bw.writeLine(String.format("%-30s\t%-30s\t%s", id.group, id.name, id.version))
+            println "group: ${id.group}, name: ${id.name}, version: ${id.version}"
+        }
+        println "Dependencies written to " + file.getCanonicalPath()
+    }
+    finally {
+        if (bw != null) {
+            bw.close()
+        }
+    }
+
+}
+
 /**
  * fatjar demo
  */
