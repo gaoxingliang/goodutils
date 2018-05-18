@@ -71,7 +71,7 @@ public class RemoveLogNotice {
      *          return true when we want to re-run for all files.
      * @throws IOException
      */
-    private static boolean processOneFile(CompilationUnit u) throws IOException {
+    public static boolean processOneFile(CompilationUnit u) throws IOException {
         System.out.println("File " + u.getStorage().get().getFileName());
         List<MethodDeclaration> methods = u.findAll(MethodDeclaration.class);
         for (MethodDeclaration m : methods) {
@@ -95,45 +95,17 @@ public class RemoveLogNotice {
                              * it's may be complex, but the main logic is:
                              * if some arg is a StringLiteralExpr we can
                              */
-
-
-                            String methodName = expression.getNameAsString(); // info
                             NodeList<Expression> arguments = expression.getArguments();
-                            StringBuilder newString = new StringBuilder("LogMsg." + methodName + "(");
                             if (arguments.size() >= 3 && arguments.size() <= 4) {
                                 Expression first = arguments.get(0);
                                 Expression second = arguments.get(1);
                                 if (isValidExpr(first) && isValidExpr(second)) {
-                                    if (first instanceof StringLiteralExpr) {
-                                        if (second instanceof StringLiteralExpr) {
-                                            newString.append("\"").append(first.asStringLiteralExpr().asString() + ", " +
-                                                    second.asStringLiteralExpr().asString()).append("\"");
-                                        }
-                                        else {
-                                            newString.append("\"").append(first.asStringLiteralExpr().asString()).append("\" " +
-                                                    "+ ").append(second.toString());
-                                        }
-                                    }
-                                    else {
-                                        if (second instanceof StringLiteralExpr) {
-                                            newString.append(first.toString()).append(" + \"").append(second
-                                                    .asStringLiteralExpr().toString()).append("\"");
-                                        }
-                                        else {
-                                            newString.append(first.toString()).append(" + ").append(second.toString());
-                                        }
-                                    }
-                                    newString.append(", ");
-                                    newString.append(arguments.get(2).toString());
-                                    if (arguments.size() == 4) {
-                                        newString.append(", ").append(arguments.get(3).toString());
-                                    }
-                                    newString.append(");");
+                                    String reComposedMethod = reComposeMethod(expression);
 
                                     Range lineRange = expression.getRange().get();
                                     // expression = JavaParser.parseExpression(newString.toString());
-                                    reWriteCode(u.getStorage().get().getPath(), expression.toString(), newString.toString(), lineRange);
-                                    System.out.println("The reformat string is " + newString);
+                                    reWriteCode(u.getStorage().get().getPath(), expression.toString(), reComposedMethod, lineRange);
+                                    System.out.println("The reformat string is " + reComposedMethod);
 
                                     return true;
                                 }
@@ -153,7 +125,6 @@ public class RemoveLogNotice {
                                 throw new IllegalArgumentException("The arguments is not 3 or 4 args - " + expression);
                             }
 
-                            newString.append(")");
                         }
                     }
                     else {
@@ -174,6 +145,62 @@ public class RemoveLogNotice {
         return false;
     }
 
+
+    /**
+     * re-compose of the LogMsg from LogNotice method.
+     * @param methodCallExpr
+     * @return the re-write method string
+     */
+    static String reComposeMethod(MethodCallExpr methodCallExpr) {
+        NodeList<Expression> arguments = methodCallExpr.getArguments();
+        String methodName = methodCallExpr.getNameAsString(); // info
+
+        StringBuilder newString = new StringBuilder("LogMsg." + methodName + "(");
+
+        Expression first = arguments.get(0);
+        Expression second = arguments.get(1);
+
+        if (first instanceof StringLiteralExpr) {
+            if (second instanceof StringLiteralExpr) {
+                //
+                newString.append("\"").append(first.asStringLiteralExpr().asString() + ", " +
+                        second.asStringLiteralExpr().asString()).append("\"");
+            }
+            else {
+                //
+                newString.append("\"").append(first.asStringLiteralExpr().asString()).append("\" " +
+                        "+ ").append(second.toString());
+            }
+        }
+        else {
+            if (second instanceof StringLiteralExpr) {
+                //
+                newString.append(first.toString()).append(" + ").append(second
+                        .asStringLiteralExpr().toString());
+            }
+            else {
+                //
+                newString.append(first.toString()).append(" + ").append(second.toString());
+            }
+        }
+        newString.append(", ");
+        newString.append(arguments.get(2).toString());
+        if (arguments.size() == 4) {
+            newString.append(", ").append(arguments.get(3).toString());
+        }
+        newString.append(");");
+
+        return newString.toString();
+
+
+    }
+
+
+    /**
+     * whether the cu contains the LogNotice class import
+     * @param u
+     * @return
+     */
     private static boolean containsOurMethod(CompilationUnit u) {
         for (ImportDeclaration id : u.getImports()) {
             if (id.getName().asString().equals("com.santaba.common.logger.LogNotice")) {
@@ -187,6 +214,13 @@ public class RemoveLogNotice {
         return true;
     }
 
+
+    /**
+     * re init the cu sets.
+     * @param srcFolder
+     * @param startPackage
+     * @throws IOException
+     */
     private static void reInit(String srcFolder, String startPackage) throws IOException {
         allCus.clear();
         ParserConfiguration conf = new ParserConfiguration();
@@ -204,7 +238,16 @@ public class RemoveLogNotice {
         );
     }
 
-
+    /**
+     * Re-write the code by
+     *  (1) if the original line found in file, just replace it.
+     *  (2) if not found in file, the file will be rewrite according to the line range infor
+     * @param file  the file which will be replaced or changed
+     * @param originalLine the original line (may be multiple lines) in file
+     * @param replaceWith replace the method to this...
+     * @param lineRange the original line range position
+     * @throws IOException
+     */
     private static void reWriteCode(Path file, String originalLine, String replaceWith, Range lineRange) throws IOException {
         String rawString = new String(Files.readAllBytes(file));
         if (rawString.indexOf(originalLine) < 0) {
