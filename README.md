@@ -15,5 +15,10 @@ Do ssl test:<br>
 可以参考我的博客, 获取通过该代码下载的算法导论和机器学习的视频文件.
 https://blog.csdn.net/scugxl/article/details/42093031
 
+# 通过JavaParser 实现的动态替换和修改源代码的示例代码
+[javaparser.RemoveLogNotice](src/javaparser/RemoveLogNotice.java) <br>
+这里展示了如何将LogNotice 类相关的调用 替换为LogMsg的实现.
+
+
 # 梯度下降测试代码
 [GredientDescentDemo](src/GredientDescentDemo.java)
