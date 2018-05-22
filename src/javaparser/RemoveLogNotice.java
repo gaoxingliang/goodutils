@@ -110,6 +110,12 @@ public class RemoveLogNotice {
 
                                 Range lineRange = expression.getRange().get();
                                 // expression = JavaParser.parseExpression(newString.toString());
+                                if (!expression.toString().endsWith(";")) {
+                                    // if the raw expression didn't contains the ;
+                                    // the replace string should not contain ; too
+                                    reComposedMethod = reComposedMethod.substring(0, reComposedMethod.length() - 1);
+                                }
+
                                 reWriteCode(u.getStorage().get().getPath(), expression.toString(), reComposedMethod, lineRange);
                                 System.out.println("The reformat string is " + reComposedMethod);
 
@@ -228,7 +234,12 @@ public class RemoveLogNotice {
 
 
     private static CompilationUnit reCompile(Path file) throws IOException {
-        return JavaParser.parse(file);
+        try {
+            return JavaParser.parse(file);
+        } catch (Exception e) {
+            System.err.println("Fail to parse file " + file);
+            throw e;
+        }
     }
 
     /**
@@ -278,8 +289,13 @@ public class RemoveLogNotice {
             int startLine = lineRange.begin.line - 1;// the range start with 1
             int endLine = lineRange.end.line - 1;
             StringBuilder toFileLine = new StringBuilder();
-            for (int i = 0; i < lineRange.begin.column; i++) {
+            for (int i = 0; i < lineRange.begin.column - 1; i++) {
                 toFileLine.append(" "); // make sure it's align right
+            }
+
+            // if replace with don't contains ; let's add it here
+            if (!replaceWith.endsWith(";")) {
+                replaceWith+= ";";
             }
             toFileLine.append(replaceWith);
             List<String> toFileLines = new ArrayList<>();
