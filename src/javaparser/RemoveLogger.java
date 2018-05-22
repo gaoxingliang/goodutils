@@ -14,15 +14,15 @@ import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.expr.ObjectCreationExpr;
-import com.github.javaparser.ast.expr.StringLiteralExpr;
 import com.github.javaparser.ast.stmt.ExpressionStmt;
 import com.github.javaparser.utils.SourceRoot;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Stack;
+import java.nio.file.StandardOpenOption;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -31,19 +31,44 @@ import java.util.stream.Collectors;
  * https://www.javaadvent.com/2017/12/javaparser-generate-analyze-modify-java-code.html
  * <p>
  * This class implemented a method to replace some method like:
- * LogNotice.info("aaa", "bb", "cc", [e])
- * -> to
- * LogMsg.info("aa, bb", "cc", [e])
- * <p>
+ * Logger.infor2("aaa", "xx") -> LogMsg
  * <p>
  * Note: this will overwrite the files.
  * Created by edward.gao on 10/26/16.
  */
-public class RemoveLogNotice {
+public class RemoveLogger {
     private static Stack<CompilationUnit> allCus = new Stack<>();
 
     private static String STARTPACKAGE = ""; //  the package name like "aaa.bbc.ccc"
     private static String SOURCE_FOLDER = ""; // the base source folder like "/code/java/src"
+
+    static final Map<String /*method in Logger*/, String /*method in LogMsg*/> methodMap = new HashMap<>();
+
+    // ignore methods for Logger
+    static final Set<String> ignoreMethods = new HashSet<>();
+
+    static {
+
+        ignoreMethods.add("setComponent");
+        ignoreMethods.add("setIdStr");
+        ignoreMethods.add("removeListener");
+        ignoreMethods.add("addListener");
+        ignoreMethods.add("setLogLevel");
+
+        methodMap.put("trace2", "debug");
+        methodMap.put("trace", "debug");
+        methodMap.put("debug2", "debug");
+        methodMap.put("debug", "debug");
+        methodMap.put("info", "info");
+        methodMap.put("info2", "info");
+        methodMap.put("warn", "warn");
+        methodMap.put("warn2", "warn");
+        methodMap.put("error", "error");
+        methodMap.put("error2", "error");
+        methodMap.put("exception", "error");
+        methodMap.put("exception2", "error");
+    }
+
 
     public static void main(String[] args) throws IOException {
         if (args.length < 2) {
@@ -60,7 +85,45 @@ public class RemoveLogNotice {
             }
         }
 
+
+        System.out.println("Round two.... add needed imports.....");
+
+        init(SOURCE_FOLDER, STARTPACKAGE);
+        while(!allCus.isEmpty()) {
+            CompilationUnit u = allCus.pop();
+            if (needAddLogMsgPackageImport(u)) {
+                List<String> lines = Files.readAllLines(u.getStorage().get().getPath());
+                int i = 0;
+                for (; i < lines.size(); i++) {
+                    if (lines.get(i).startsWith("import ")) {
+                        break;
+                    }
+                }
+                lines.add(i+1, "import com.santaba.common.logger.LogMsg;");
+                Files.write(u.getStorage().get().getPath(), lines, StandardOpenOption.TRUNCATE_EXISTING);
+                System.out.println("Add import for " + u.getStorage().get().getFileName());
+            }
+        }
+
     }
+
+    private static boolean needAddLogMsgPackageImport(CompilationUnit u) {
+        for (ImportDeclaration id : u.getImports()) {
+            String pack = id.getName().asString();
+            if (pack.equals("com.santaba.common.logger.*")
+                    ) {
+                return false;
+            } else if (pack.equals("com.santaba.common.logger.LogMsg")) {
+                return false;
+            }
+        }
+        if (u.toString().contains("LogMsg")) {
+            return true;
+        }
+        System.out.println("No need add import for " + u.getStorage().get().getFileName());
+        return false;
+    }
+
 
     /**
      * Process a single compilation unit, that's a file too
@@ -91,7 +154,11 @@ public class RemoveLogNotice {
                 Expression expr = ((ExpressionStmt) curSt).getExpression();
                 if (expr instanceof MethodCallExpr) {
                     MethodCallExpr expression = (MethodCallExpr) expr;
-                    if (expression.getScope().isPresent() && expression.getScope().get().toString().equals("LogNotice")) {
+                    if (expression.getScope().isPresent() && expression.getScope().get().toString().equals("Logger")
+                            ) {
+                        if (ignoreMethods.contains(expression.getNameAsString())) {
+                            continue;
+                        }
 
                         /**
                          * here we start to replace the methods....
@@ -99,17 +166,13 @@ public class RemoveLogNotice {
                          * if some arg is a StringLiteralExpr we can
                          */
                         NodeList<Expression> arguments = expression.getArguments();
-                        if (arguments.size() >= 3 && arguments.size() <= 4) {
+                        if (arguments.size() >=1 && arguments.size()<=3) {
                             Expression first = arguments.get(0);
-                            Expression second = arguments.get(1);
-                            if (isValidExpr(first) && isValidExpr(second)) {
+                            if (isValidExpr(first)) {
                                 String reComposedMethod = reComposeMethod(expression);
 
                                 Range lineRange = expression.getRange().get();
-                                // expression = JavaParser.parseExpression(newString.toString());
                                 if (!expression.toString().endsWith(";")) {
-                                    // if the raw expression didn't contains the ;
-                                    // the replace string should not contain ; too
                                     reComposedMethod = reComposedMethod.substring(0, reComposedMethod.length() - 1);
                                 }
 
@@ -131,7 +194,7 @@ public class RemoveLogNotice {
 
                         }
                         else {
-                            throw new IllegalArgumentException("The arguments is not 3 or 4 args - " + expression);
+                            throw new IllegalArgumentException("Not support expression with args numbers..." + expression);
                         }
 
                     }
@@ -163,40 +226,44 @@ public class RemoveLogNotice {
     static String reComposeMethod(MethodCallExpr methodCallExpr) {
         NodeList<Expression> arguments = methodCallExpr.getArguments();
         String methodName = methodCallExpr.getNameAsString(); // info
+        String methodNameForLogMsg = methodMap.get(methodName);
+        if (methodNameForLogMsg == null) {
+            throw new IllegalStateException(String.format("Not find matched method for method %s in LogMsg, expression=%s", methodName, methodCallExpr));
+        }
 
-        StringBuilder newString = new StringBuilder("LogMsg." + methodName + "(");
+        StringBuilder newString = new StringBuilder("LogMsg." + methodNameForLogMsg + "(");
 
         Expression first = arguments.get(0);
-        Expression second = arguments.get(1);
-
-        if (first instanceof StringLiteralExpr) {
-            if (second instanceof StringLiteralExpr) {
-                //
-                newString.append("\"").append(first.asStringLiteralExpr().asString() + ", " +
-                        second.asStringLiteralExpr().asString()).append("\"");
+        if (arguments.size() == 1) {
+            if (Helper.isException(first)) {
+                // some expression like Logger.exception2(e)
+                newString.append("\"\", \"\", ").append(first.toString());
             }
             else {
-                //
-                newString.append("\"").append(first.asStringLiteralExpr().asString()).append("\" " +
-                        "+ ").append(second.toString());
+                newString.append(Helper.simpleCompose(first));
+                newString.append(", \"\"");
             }
+        }
+        else if (arguments.size() == 2) {
+            newString.append(Helper.simpleCompose(first));
+            if (Helper.isException(arguments.get(1))) {
+                // exception...
+                // format is Logger.xxx(aaa, e)
+                newString.append(", \"\", ").append(arguments.get(1).toString());
+            }
+            else {
+                newString.append(", ").append(Helper.simpleCompose(arguments.get(1)));
+            }
+        }
+        else if (arguments.size() == 3) {
+            newString.append(Helper.simpleCompose(arguments.get(0))).append(", ")
+                    .append(Helper.simpleCompose(arguments.get(1))).append(", ")
+                    .append(Helper.simpleCompose(arguments.get(2)));
         }
         else {
-            if (second instanceof StringLiteralExpr) {
-                //
-                newString.append(first.toString()).append(" + ").append(second
-                        .asStringLiteralExpr().toString());
-            }
-            else {
-                //
-                newString.append(first.toString()).append(" + ").append(second.toString());
-            }
+            throw new IllegalStateException("Not implement args:" + methodCallExpr);
         }
-        newString.append(", ");
-        newString.append(arguments.get(2).toString());
-        if (arguments.size() == 4) {
-            newString.append(", ").append(arguments.get(3).toString());
-        }
+
         newString.append(");");
 
         return newString.toString();
@@ -213,12 +280,12 @@ public class RemoveLogNotice {
      */
     private static boolean containsOurMethod(CompilationUnit u) {
         for (ImportDeclaration id : u.getImports()) {
-            if (id.getName().asString().equals("com.santaba.common.logger.LogNotice")
+            if (id.getName().asString().equals("com.santaba.common.logger.Logger")
                     ) {
                 return true;
             }
         }
-        if (u.toString().contains("LogNotice")) {
+        if (u.toString().contains("Logger")) {
             return true;
         }
         System.out.println("Skipped " + u.getStorage().get().getFileName());
