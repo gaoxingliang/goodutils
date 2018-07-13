@@ -9,6 +9,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.sun.btrace.BTraceUtils.*;
 
 /**
+ * Monitor the cpu creation stats
+ *
  * reference :
  * Monitor using java or aop:
  * https://www.javaspecialists.eu/archive/Issue169.html
@@ -29,13 +31,22 @@ public class MonitorSocket {
             method="/.*/"
     )
     public static void anyConnect(@ProbeClassName String pcn, @ProbeMethodName String pmn, AnyType[] args) {
+        // print the threadName
         if (BTraceUtils.startsWith(pmn, "connect")) {
-            println("connect ");
+            println("connect with thread " + BTraceUtils.currentThread());
             BTraceUtils.printArray(args);
+
+            // this will printout current threadDump
+            Threads.jstack();
             BTraceUtils.incrementAndGet(connectCalled);
         } else if (BTraceUtils.startsWith(pmn, "doConnect")) {
-            println("doConnect ");
-            BTraceUtils.printArray(args);
+
+            /**
+             * doConnect is a subcall of connect method in AbstractPlainSocketImpl
+             */
+//            println("doConnect " + BTraceUtils.currentThread());
+//            BTraceUtils.printArray(args);
+//            Threads.jstack();
             incrementAndGet(doConnectCalled);
         }
     }
