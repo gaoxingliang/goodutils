@@ -8,6 +8,35 @@ Accustoms the learner to 'btrace' command and the way it is used.
 Demonstrates the BTrace ability to instrument a class.
 
 ### Setup
+Maven:
+```
+<!-- https://mvnrepository.com/artifact/com.sun.tools.btrace/btrace-boot -->
+<dependency>
+    <groupId>com.sun.tools.btrace</groupId>
+    <artifactId>btrace-boot</artifactId>
+    <version>1.2.3</version>
+</dependency>
+<dependency>
+    <groupId>com.sun.tools.btrace</groupId>
+    <artifactId>btrace-agent</artifactId>
+    <version>1.2.3</version>
+</dependency>
+<dependency>
+    <groupId>com.sun.tools.btrace</groupId>
+    <artifactId>btrace-client</artifactId>
+    <version>1.2.3</version>
+</dependency>
+
+```
+
+Gradle:
+```
+compile group: 'com.sun.tools.btrace', name: 'btrace-boot', version: '1.2.3'
+compile group: 'com.sun.tools.btrace', name: 'btrace-agent', version: '1.2.3'
+compile group: 'com.sun.tools.btrace', name: 'btrace-client', version: '1.2.3'
+
+```
+
 
 #### HelloWorld Class
 
