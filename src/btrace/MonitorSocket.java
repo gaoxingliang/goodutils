@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.sun.btrace.BTraceUtils.*;
 
 /**
- * Monitor the cpu creation stats
+ * Monitor the socket creation stats
  *
  * reference :
  * Monitor using java or aop:
