@@ -6,6 +6,9 @@ Add a support for
 # SSLTest
 Do ssl test:<br>
 `java -cp goodutils.jar SSLTest baidu.com`
+## PRoxy test
+[proxytest in java](src/network/ProxyTest.java)
+[setup a proxy](src/network/ConfigAProxyByCCProxy.md)
 
 # GC handbook/GC中文手册
 非常详细的[GC 中文手册](gc_handbook_zh.md)

@@ -93,7 +93,7 @@ dependencies {
     compile group: 'com.sun.tools.btrace', name: 'btrace-boot', version: '1.2.3'
     compile group: 'com.sun.tools.btrace', name: 'btrace-agent', version: '1.2.3'
     compile group: 'com.sun.tools.btrace', name: 'btrace-client', version: '1.2.3'
-
+    compile group: 'commons-cli', name: 'commons-cli', version: '1.4'
 
     // Include non maven standard layout file into war
     testCompile(
