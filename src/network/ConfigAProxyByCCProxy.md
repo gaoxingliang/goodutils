@@ -5,6 +5,6 @@ http://www.ccproxy.com/
 2. Install it
 
 3. Config
-![Config ports](res/network/proxy/cc1.png)
+![Config ports](../../res/network/proxy/cc1.png)
 
-![Config user](res/network/proxy/cc2.png)
+![Config user](../../res/network/proxy/cc2.png)

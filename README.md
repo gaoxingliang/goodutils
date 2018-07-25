@@ -7,7 +7,7 @@ Add a support for
 Do ssl test:<br>
 `java -cp goodutils.jar SSLTest baidu.com`
 ## PRoxy test
-[proxytest in java](src/network/ProxyTest.java)
+[proxytest in java](src/network/ProxyTest.java)<br>
 [setup a proxy](src/network/ConfigAProxyByCCProxy.md)
 
 # GC handbook/GC中文手册
