@@ -1,4 +1,4 @@
-/*
+package network;/*
  * SSLUtils.java
  *
  * Contains useful SSL/TLS methods.
@@ -35,19 +35,17 @@ import java.util.Collection;
 
 /**
  * Lots of useful SSL-related goodies.
- *
- *
+ * <p>
+ * <p>
  * https://wiki.apache.org/tomcat/tools/SSLUtils.java
+ *
  * @author Christopher Schultz
  * @author Apache Software Foundation (some code adapted/lifted from Apache Tomcat).
  */
-public class SSLUtils
-{
-    public static void disableSSLHostnameVerification()
-    {
+public class SSLUtils {
+    public static void disableSSLHostnameVerification() {
         HostnameVerifier verifyEverything = new HostnameVerifier() {
-            public boolean verify(String hostname, SSLSession session)
-            {
+            public boolean verify(String hostname, SSLSession session) {
                 return true;
             }
         };
@@ -55,27 +53,28 @@ public class SSLUtils
         HttpsURLConnection.setDefaultHostnameVerifier(verifyEverything);
     }
 
-    private static final TrustManager[] trustAllCerts = new TrustManager[] {
+    public static final TrustManager[] trustAllCerts = new TrustManager[]{
             new X509TrustManager() {
                 public X509Certificate[] getAcceptedIssuers() {
                     return null;
                 }
+
                 public void checkClientTrusted(X509Certificate[] certs,
                                                String authType) {
                     // Trust all clients
                 }
+
                 public void checkServerTrusted(X509Certificate[] certs,
                                                String authType) {
                     // Trust all servers
                 }
             }
-        };
+    };
 
-    public static TrustManager[] getTrustAllCertsTrustManagers()
-    {
+    public static TrustManager[] getTrustAllCertsTrustManagers() {
         return trustAllCerts.clone();
     }
-    
+
     /**
      * Configures SSLSocketFactory for Java's HttpsURLConnection.
      */
@@ -84,15 +83,19 @@ public class SSLUtils
                                                    String[] sslCipherSuites,
                                                    SecureRandom random,
                                                    TrustManager[] tms)
-        throws NoSuchAlgorithmException, KeyManagementException
-    {
+            throws NoSuchAlgorithmException, KeyManagementException {
         HttpsURLConnection.setDefaultSSLSocketFactory(getSSLSocketFactory(protocol,
-                                                                          sslEnabledProtocols,
-                                                                          sslCipherSuites,
-                                                                          random,
-                                                                          tms));
+                sslEnabledProtocols,
+                sslCipherSuites,
+                random,
+                tms));
     }
-    
+
+
+    public static void disableHttpsCertVerification() throws KeyManagementException, NoSuchAlgorithmException {
+        configureHttpsURLConnection("TLS", null, null, new SecureRandom(), getTrustAllCertsTrustManagers());
+    }
+
     /**
      * Creates an SSLSocketFactory that supports only the specified protocols
      * and ciphers.
@@ -102,8 +105,7 @@ public class SSLUtils
                                                        String[] sslCipherSuites,
                                                        SecureRandom random,
                                                        TrustManager[] tms)
-        throws NoSuchAlgorithmException, KeyManagementException
-    {
+            throws NoSuchAlgorithmException, KeyManagementException {
         SSLContext sc = SSLContext.getInstance(protocol);
 
 //        System.out.println("Wanted protocol: " + protocol);
@@ -113,11 +115,11 @@ public class SSLUtils
 
         SSLSocketFactory sf = sc.getSocketFactory();
 
-        if(null != sslEnabledProtocols
-           || null != sslCipherSuites)
+        if (null != sslEnabledProtocols
+                || null != sslCipherSuites)
             sf = new CustomSSLSocketFactory(sf,
-                                            sslEnabledProtocols,
-                                            sslCipherSuites);
+                    sslEnabledProtocols,
+                    sslCipherSuites);
 
         return sf;
     }
@@ -125,12 +127,11 @@ public class SSLUtils
     /**
      * In order to customize the specific enabled protocols and cipher suites,
      * a customized SSLSocketFactory must be used.
-     * 
+     * <p>
      * This is just a wrapper around that customization.
      */
     public static class CustomSSLSocketFactory
-        extends javax.net.ssl.SSLSocketFactory
-    {
+            extends javax.net.ssl.SSLSocketFactory {
         private final String[] _sslEnabledProtocols;
         private final String[] _sslCipherSuites;
         private final SSLSocketFactory _base;
@@ -139,16 +140,15 @@ public class SSLUtils
 
         public CustomSSLSocketFactory(SSLSocketFactory base,
                                       String[] sslEnabledProtocols,
-                                      String[] sslCipherSuites)
-        {
+                                      String[] sslCipherSuites) {
             _base = base;
-            if(null == sslEnabledProtocols)
+            if (null == sslEnabledProtocols)
                 _sslEnabledProtocols = null;
             else
                 _sslEnabledProtocols = sslEnabledProtocols.clone();
-            if(null == sslCipherSuites || 0 == sslCipherSuites.length)
+            if (null == sslCipherSuites || 0 == sslCipherSuites.length)
                 _sslCipherSuites = getDefaultCipherSuites();
-            else if(1 == sslCipherSuites.length && "ALL".equalsIgnoreCase(sslCipherSuites[0]))
+            else if (1 == sslCipherSuites.length && "ALL".equalsIgnoreCase(sslCipherSuites[0]))
                 _sslCipherSuites = getSupportedCipherSuites();
             else
                 _sslCipherSuites = sslCipherSuites.clone();
@@ -162,60 +162,59 @@ public class SSLUtils
         public String[] getDefaultCipherSuites() {
             return _base.getDefaultCipherSuites();
         }
+
         public String[] getSupportedCipherSuites() {
             return _base.getSupportedCipherSuites();
         }
-        
-        private SSLSocket customize(Socket s)
-        {
-            SSLSocket socket = (SSLSocket)s;
 
-            if(null != _sslEnabledProtocols)
+        private SSLSocket customize(Socket s) {
+            SSLSocket socket = (SSLSocket) s;
+
+            if (null != _sslEnabledProtocols)
                 socket.setEnabledProtocols(_sslEnabledProtocols);
 
             socket.setEnabledCipherSuites(_sslCipherSuites);
 
             if (s instanceof SSLSocketImpl && expectedHost != null) {
-                ((SSLSocketImpl)s).setHost(expectedHost);
+                ((SSLSocketImpl) s).setHost(expectedHost);
             }
 
 
             return socket;
         }
-        
+
         @Override
         public Socket createSocket(Socket s,
                                    String host,
                                    int port,
                                    boolean autoClose)
-            throws IOException
-        {
+                throws IOException {
             return customize(_base.createSocket(s, host, port, autoClose));
         }
+
         @Override
         public Socket createSocket(String host, int port)
-            throws IOException, UnknownHostException
-        {
+                throws IOException, UnknownHostException {
             return customize(_base.createSocket(host, port));
         }
+
         @Override
         public Socket createSocket(InetAddress host, int port)
-            throws IOException
-        {
+                throws IOException {
             return customize(_base.createSocket(host, port));
         }
+
         @Override
         public Socket createSocket(String host, int port,
                                    InetAddress localHost, int localPort)
-            throws IOException, UnknownHostException
-        {
+                throws IOException, UnknownHostException {
             return customize(_base.createSocket(host, port, localHost, localPort));
         }
+
         @Override
         public Socket createSocket(InetAddress address, int port,
                                    InetAddress localAddress, int localPort)
-            throws IOException
-        {
+                throws IOException {
             return customize(_base.createSocket(address, port, localAddress, localPort));
         }
     }
@@ -223,28 +222,26 @@ public class SSLUtils
     /**
      * In order to customize the specific enabled protocols and cipher suites,
      * a customized SSLSocketFactory must be used.
-     * 
+     * <p>
      * This is just a wrapper around that customization.
      */
     public static class CustomSSLServerSocketFactory
-        extends javax.net.ssl.SSLServerSocketFactory
-    {
+            extends javax.net.ssl.SSLServerSocketFactory {
         private final String[] _sslEnabledProtocols;
         private final String[] _sslCipherSuites;
         private final SSLServerSocketFactory _base;
 
         public CustomSSLServerSocketFactory(SSLServerSocketFactory base,
                                             String[] sslEnabledProtocols,
-                                            String[] sslCipherSuites)
-        {
+                                            String[] sslCipherSuites) {
             _base = base;
-            if(null == sslEnabledProtocols)
+            if (null == sslEnabledProtocols)
                 _sslEnabledProtocols = null;
             else
                 _sslEnabledProtocols = sslEnabledProtocols.clone();
-            if(null == sslCipherSuites || 0 == sslCipherSuites.length)
+            if (null == sslCipherSuites || 0 == sslCipherSuites.length)
                 _sslCipherSuites = getDefaultCipherSuites();
-            else if(1 == sslCipherSuites.length && "ALL".equalsIgnoreCase(sslCipherSuites[0]))
+            else if (1 == sslCipherSuites.length && "ALL".equalsIgnoreCase(sslCipherSuites[0]))
                 _sslCipherSuites = getSupportedCipherSuites();
             else
                 _sslCipherSuites = sslCipherSuites.clone();
@@ -253,15 +250,15 @@ public class SSLUtils
         public String[] getDefaultCipherSuites() {
             return _base.getDefaultCipherSuites();
         }
+
         public String[] getSupportedCipherSuites() {
             return _base.getSupportedCipherSuites();
         }
-        
-        private SSLServerSocket customize(ServerSocket s)
-        {
-            SSLServerSocket socket = (SSLServerSocket)s;
 
-            if(null != _sslEnabledProtocols)
+        private SSLServerSocket customize(ServerSocket s) {
+            SSLServerSocket socket = (SSLServerSocket) s;
+
+            if (null != _sslEnabledProtocols)
                 socket.setEnabledProtocols(_sslEnabledProtocols);
 
             socket.setEnabledCipherSuites(_sslCipherSuites);
@@ -271,29 +268,25 @@ public class SSLUtils
 
         @Override
         public SSLServerSocket createServerSocket()
-            throws IOException
-        {
+                throws IOException {
             return customize(_base.createServerSocket());
         }
 
         @Override
         public SSLServerSocket createServerSocket(int port)
-            throws IOException
-        {
+                throws IOException {
             return customize(_base.createServerSocket(port));
         }
 
         @Override
         public SSLServerSocket createServerSocket(int port, int backlog)
-            throws IOException
-        {
+                throws IOException {
             return customize(_base.createServerSocket(port, backlog));
         }
 
         @Override
         public SSLServerSocket createServerSocket(int port, int backlog, InetAddress ifAddress)
-            throws IOException
-        {
+                throws IOException {
             return customize(_base.createServerSocket(port, backlog, ifAddress));
         }
     }
@@ -307,8 +300,7 @@ public class SSLUtils
                                                                    String[] sslCipherSuites,
                                                                    SecureRandom random,
                                                                    TrustManager[] tms)
-        throws NoSuchAlgorithmException, KeyManagementException
-    {
+            throws NoSuchAlgorithmException, KeyManagementException {
         SSLContext sc = SSLContext.getInstance(protocol);
 
 //        System.out.println("Wanted protocol: " + protocol);
@@ -318,11 +310,11 @@ public class SSLUtils
 
         SSLServerSocketFactory sf = sc.getServerSocketFactory();
 
-        if(null != sslEnabledProtocols
-           || null != sslCipherSuites)
+        if (null != sslEnabledProtocols
+                || null != sslCipherSuites)
             sf = new CustomSSLServerSocketFactory(sf,
-                                                  sslEnabledProtocols,
-                                                  sslCipherSuites);
+                    sslEnabledProtocols,
+                    sslCipherSuites);
 
         return sf;
     }
@@ -343,9 +335,7 @@ public class SSLUtils
      * @param trustStoreAlgorithm
      * @param maxCertificatePathLength
      * @param crlFilename
-     *
      * @return An array of TrustManagers
-     *
      * @throws IOException
      * @throws KeyStoreException
      * @throws NoSuchProviderException
@@ -361,32 +351,30 @@ public class SSLUtils
                                                      String trustStoreAlgorithm,
                                                      Integer maxCertificatePathLength,
                                                      String crlFilename)
-        throws IOException, KeyStoreException, NoSuchProviderException, NoSuchAlgorithmException, CertificateException, InvalidAlgorithmParameterException, CRLException
-    {
+            throws IOException, KeyStoreException, NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
+            InvalidAlgorithmParameterException, CRLException {
         KeyStore trustStore = getStore(trustStoreFilename,
-                                       trustStorePassword,
-                                       trustStoreType,
-                                       trustStoreProvider);
+                trustStorePassword,
+                trustStoreType,
+                trustStoreProvider);
 
-        if(null == trustStoreAlgorithm)
+        if (null == trustStoreAlgorithm)
             trustStoreAlgorithm = TrustManagerFactory.getDefaultAlgorithm();
 
         TrustManagerFactory tmf =
                 TrustManagerFactory.getInstance(trustStoreAlgorithm);
-        if (null == crlFilename)
-        {
+        if (null == crlFilename) {
             tmf.init(trustStore);
         }
-        else
-        {
+        else {
             CertPathParameters params =
-                getParameters(trustStoreAlgorithm,
-                              crlFilename,
-                              maxCertificatePathLength,
-                              trustStore);
+                    getParameters(trustStoreAlgorithm,
+                            crlFilename,
+                            maxCertificatePathLength,
+                            trustStore);
 
             ManagerFactoryParameters mfp =
-                new CertPathTrustManagerParameters(params);
+                    new CertPathTrustManagerParameters(params);
 
             tmf.init(mfp);
         }
@@ -398,13 +386,11 @@ public class SSLUtils
      * Return the initialization parameters for the TrustManager.
      * Currently, only the default <code>PKIX</code> is supported.
      *
-     * @param algorithm The algorithm to get parameters for.
-     * @param crlFilename The path to the CRL file.
+     * @param algorithm                 The algorithm to get parameters for.
+     * @param crlFilename               The path to the CRL file.
      * @param maxCertificateChainLength Optional maximum cert chain length.
-     * @param trustStore The configured TrustStore.
-     *
+     * @param trustStore                The configured TrustStore.
      * @return The parameters including the TrustStore and any CRLs.
-     *
      * @throws InvalidAlgorithmParameterException
      * @throws KeyStoreException
      * @throws IOException
@@ -416,23 +402,24 @@ public class SSLUtils
                                                       String crlFilename,
                                                       Integer maxCertificateChainLength,
                                                       KeyStore trustStore)
-        throws KeyStoreException, InvalidAlgorithmParameterException, CRLException, CertificateException, IOException, NoSuchAlgorithmException
-    {
+            throws KeyStoreException, InvalidAlgorithmParameterException, CRLException, CertificateException, IOException,
+            NoSuchAlgorithmException {
         CertPathParameters params = null;
-        if("PKIX".equalsIgnoreCase(algorithm)) {
+        if ("PKIX".equalsIgnoreCase(algorithm)) {
             PKIXBuilderParameters xparams =
-                new PKIXBuilderParameters(trustStore, new X509CertSelector());
+                    new PKIXBuilderParameters(trustStore, new X509CertSelector());
             Collection<? extends CRL> crls = getCRLs(crlFilename);
             CertStoreParameters csp = new CollectionCertStoreParameters(crls);
             CertStore store = CertStore.getInstance("Collection", csp);
             xparams.addCertStore(store);
             xparams.setRevocationEnabled(true);
 
-            if(maxCertificateChainLength != null)
+            if (maxCertificateChainLength != null)
                 xparams.setMaxPathLength(maxCertificateChainLength.intValue());
 
             params = xparams;
-        } else {
+        }
+        else {
             throw new CRLException("CRLs not supported for type: " + algorithm);
         }
         return params;
@@ -443,31 +430,30 @@ public class SSLUtils
      * from a file.
      *
      * @param crlFilename The file name of the CRL.
-     *
      * @return A Collection of CRLs from the specified file.
-     *
-     * @throws IOException If the CRL file could not be loaded.
-     * @throws CRLException If the CRL list cannot be loaded.
+     * @throws IOException          If the CRL file could not be loaded.
+     * @throws CRLException         If the CRL list cannot be loaded.
      * @throws CertificateException If there is a problem with one
-     *         of the certificates in the revocation list.
+     *                              of the certificates in the revocation list.
      */
     public static Collection<? extends CRL> getCRLs(String crlFilename)
-        throws IOException, CRLException, CertificateException
-    {
+            throws IOException, CRLException, CertificateException {
         File crlFile = new File(crlFilename);
 
         Collection<? extends CRL> crls = null;
         InputStream is = null;
-        try
-        {
+        try {
             CertificateFactory cf = CertificateFactory.getInstance("X.509");
             is = new FileInputStream(crlFile);
             crls = cf.generateCRLs(is);
         }
-        finally
-        {
-            if(is != null) try{ is.close(); }
-            catch(IOException ioe) { ioe.printStackTrace(); }
+        finally {
+            if (is != null) try {
+                is.close();
+            }
+            catch (IOException ioe) {
+                ioe.printStackTrace();
+            }
         }
         return crls;
     }
@@ -477,29 +463,25 @@ public class SSLUtils
      *
      * @param storeFilename The file name of the keystore.
      * @param storePassword The keystore password.
-     * @param storeType The type of the keystore.
+     * @param storeType     The type of the keystore.
      * @param storeProvider Optional keystore provider.
-     *
      * @return A KeyStore loaded from the specified file.
-     *
-     * @throws IOException If the file cannot be read.
-     * @throws KeyStoreException If the KeyStore cannot be read.
-     * @throws NoSuchProviderException If the provider is not recognized.
+     * @throws IOException              If the file cannot be read.
+     * @throws KeyStoreException        If the KeyStore cannot be read.
+     * @throws NoSuchProviderException  If the provider is not recognized.
      * @throws NoSuchAlgorithmException If the an algorithm used by the KeyStore is no recognized.
-     * @throws CertificateException If there is a problem with a certificate in the KeyStore.
+     * @throws CertificateException     If there is a problem with a certificate in the KeyStore.
      */
     public static KeyStore getStore(String storeFilename,
                                     String storePassword,
                                     String storeType,
                                     String storeProvider)
-        throws IOException, KeyStoreException, NoSuchProviderException, CertificateException, NoSuchAlgorithmException
-    {
+            throws IOException, KeyStoreException, NoSuchProviderException, CertificateException, NoSuchAlgorithmException {
         KeyStore ks = null;
         InputStream in = null;
 
-        try
-        {
-            if(null == storeProvider)
+        try {
+            if (null == storeProvider)
                 ks = KeyStore.getInstance(storeType);
             else
                 ks = KeyStore.getInstance(storeType, storeProvider);
@@ -516,10 +498,13 @@ public class SSLUtils
 
             return ks;
         }
-        finally
-        {
-            if(null != in) try { in.close(); }
-            catch (IOException ioe) { ioe.printStackTrace(); }
+        finally {
+            if (null != in) try {
+                in.close();
+            }
+            catch (IOException ioe) {
+                ioe.printStackTrace();
+            }
         }
     }
 }
