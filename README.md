@@ -28,6 +28,9 @@ https://blog.csdn.net/scugxl/article/details/42093031
 # 梯度下降测试代码
 [GredientDescentDemo](src/GredientDescentDemo.java)
 
+# 获取JAVA cpu
+[get cpu in java](src/cpu/CpuTest.java)
+
 
 # software installation related
 
