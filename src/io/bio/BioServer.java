@@ -32,6 +32,7 @@ public class BioServer {
         private Socket socket;
         private Scanner scanner;
         private BufferedWriter out;
+
         public TaskHandler(Socket socket) {
             this.socket = socket;
             try {
@@ -45,21 +46,22 @@ public class BioServer {
 
         @Override
         public void run() {
-            while (true) {
+            boolean flag = true;
+            while (flag) {
                 String line = scanner.nextLine();
                 System.out.println("Read from client - " + line);
                 if (line != null) {
+                    String writeMessage = "[Echo] " + line + "\n";
                     if (line.equalsIgnoreCase("bye")) {
-                        break;
+                        flag = false;
+                        writeMessage = "[Exit] byebye " + "\n";
                     }
-                    else {
-                        try {
-                            out.write("Echo - " + line + "\n");
-                            out.flush();
-                        }
-                        catch (IOException e) {
-                            e.printStackTrace();
-                        }
+                    try {
+                        out.write(writeMessage);
+                        out.flush();
+                    }
+                    catch (IOException e) {
+                        e.printStackTrace();
                     }
                 }
             }

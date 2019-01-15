@@ -19,13 +19,11 @@ public class BioClient {
         scanner.useDelimiter("\n");
         while (true) {
             String line = InputUtil.getLine("Input something:").trim();
-            line += "\n";
-            socket.getOutputStream().write(line.getBytes());
+            socket.getOutputStream().write((line + "\n").getBytes());
             if (line.equalsIgnoreCase("bye")) {
                 break;
             }
-            System.out.println(scanner.nextLine());
-
+            System.out.println("Read resp from remote:" + scanner.nextLine());
         }
         socket.close();
     }
