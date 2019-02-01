@@ -31,6 +31,9 @@ https://blog.csdn.net/scugxl/article/details/42093031
 # 获取JAVA cpu
 [get cpu in java](src/cpu/CpuTest.java)
 
+# JAVA中的BIO NIO BIO
+[java 各种IO](src/io/README.MD)
+可以参考博客: https://blog.csdn.net/scugxl/article/details/86742171
 
 # software installation related
 
