@@ -151,6 +151,7 @@ Eden 区是大多数对象创建时分配的地方. 而且经常有多线程同�
 ```
 java -XX:MaxPermSize=256m com.mycompany.MyApplication
 ```
+其他相关option: -XX:PermSize=64m
 
 ### **元空间**
 因为要预测元数据的大小实在是太难了而且也不方便, 所以在Java 8 中, 持久代被移除, 取而代之的是使用元空间. 从此开始, 大多数混杂的对象都被从常规Java 堆中移除.
@@ -162,6 +163,16 @@ java -XX:MaxPermSize=256m com.mycompany.MyApplication
 java -XX:MaxMetaspaceSize=256m com.mycompany.MyApplication
 ```
 
+其他相关option: 
+-XX:MetaspaceSize=64m 
+-XX:MaxMetaspaceSize=256 
+-XX:MinMetaspaceFreeRatio 
+-XX:MaxMetaspaceFreeRatio
+
+#### 元空间与持久代的区别
+持久代中存储的class信息在整个JVM运行过程中都不会被释放, 即便class被un-load的时候.
+但是在元空间中会因为GC运行而得到释放.
+
 ## **Minor GC, Major GC, Full GC**
 清理堆内存中不同区域的GC事件也被称为Minor GC, Major GC, Full GC. 本章中我们会见到不同事件之间的区别. 这些时间的区别也没有很大的相关性.
 
@@ -172,8 +183,32 @@ java -XX:MaxMetaspaceSize=256m com.mycompany.MyApplication
 ### **Minor GC**
 在Young区的垃圾回收被称为**Minor GC**. 这个定义很清楚也被广泛接受. 但是还是有很多知识你需要意识到在处理Minor GC事件时:
   1. Minor GC总是在JVM无法为新建对象分配空间时触发. 比如Eden满了. 所以越高的对象分配率意味着更频繁的Minor GC.
-  2. 在Minor GC过程中, 老年代被忽略了, 所有从老年代到年轻代的应用都被作为GC Roots. 从年轻代到老年代的应用在标记阶段就被忽略了.
+  2. 在Minor GC过程中, 老年代被忽略了, 所有从老年代到年轻代的引用都被作为GC Roots. 从年轻代到老年代的应用在标记阶段就被忽略了.
   3. 与常识违背的是, Minor GC也会触发STW暂停, 挂起应用线程. 对于大多数应用而言, 如果大多数对象都被认为是垃圾而且从不拷贝到Survivor/Old区, 暂停的时间是微不足道. 相反的, 如果大多数新生对象都不是垃圾, Minor GC暂停时间就会占用更长的时间.
+##### 什么是Card Table (译注加)
+来自于:[gc basics](https://blogs.msdn.microsoft.com/abhinaba/2009/03/02/back-to-basics-generational-garbage-collection/)<br>
+我们已经知道JVM是分代收集的, 那么在Minor GC中从老年代到年轻代的引用都被作为GC Roots  我们怎么知道老年代的哪些对象引用了更年轻的年轻代对象呢?<br>
+这里就必须使用Card Table/G1 中的remember set 他们用来记录那些引用了哪些更年轻对象的年老对象<br>
+假想如下的垃圾收集过程:
+1. 开始之前,只有GEN0 有一些对象(注意只有一个GCROOTS)
+![cardtable1](res/gcbook/cardtable1.png)
+2. 经过一次GC后, 可能有一些对象被回收了, 那么内存空间会变成如下:
+![cardtable2](res/gcbook/cardtable2.png)
+3. 然后这些对象会被提升到GEN1
+![cardtable3](res/gcbook/cardtable3.png)
+4. 此时我们假设代码接着运行了一会儿生成了一些新的对象(可以看到有些GEN1引用了GEN0):
+![cardtable4](res/gcbook/cardtable4.png)
+5. 如果我们此时考虑回收GEN1, 我们必须要考虑那些从GEN1引用到GEN0的对象, 如果我们不考虑这个的话, 有些对象就会得不到回收:
+注意图中标绿的对象:
+![cardtable5](res/gcbook/cardtable5.png)
+那么现在我们假设我们找到了一种办法能够识别这种情况, 那么我们知道应该把那个GEN1到GEN0的对象也应该当为GCROOTS:
+![cardtable6](res/gcbook/cardtable6.png)
+这个技术就是cardtable + write barrier:
+![cardtable7](res/gcbook/cardtable7.png)
+cardtable实际上是一个bit 数组, 标记了GEN1内存(比如分为1个个4KB为单位的block), 如果bit位被置位1(表示为红色)那就说明这个范围的内存是Dirty的(含有对更年轻对象的引用.)<br>
+有了这个table后,我们在做GC时, 不止考虑GEN0的GCROOTS, 那些CardTable 中Dirty block中的所有对象都被认为是GCROOTS.
+
+##### Card Table Finish
 
 ### **Major GC vs Full GC**
 值得注意的是, 无论是JVM规范还是GC得研究论文里面都没有关于这2个的正式定义. 但是第一眼想到的是, 基于我们对Minor GC用于清理年轻代的认识上, 我们不难得出如下定义:
@@ -229,7 +264,7 @@ java -XX:+PrintGCDetails -XX:+UseConcMarkSweepGC eu.plumbr.demo.GarbageProducer
   - 应用线程需要被暂停, 因为你没法真正遍历整个图如果它一直在变的话. 当线程被临时暂停, 然后JVM有机会来参与管理(Housekeeping)工作的场景被称为**安全点(Safe Point)**, 同时会导致**Stop The World(STW)**暂停. 安全点可能被各种原因触发, 但是目前为止, GC是最常见的一个. *译注, 还有代码逆优化, 刷新代码缓存, 类从定义(hotswap or instrumentation), 偏向锁撤销, debug操作(比如死锁检测, 堆栈dump)都会触发safepoint* [link](http://blog.ragozin.info/2012/10/safepoints-in-hotspot-jvm.html)
   - 暂停的时间并不取决于整个堆中对象的个数, 也不取决于整个堆的大小, 而是取决于**存活对象**的个数. 所以增大堆的大小并不会直接影响标记阶段的时间.
 
-当**标记**完成狗, GC就可以继续下一步-移除不可达对象
+当**标记**完成后, GC就可以继续下一步-移除不可达对象
 
 ## **移除不可达对象**
 不同的GC算法可能会常用不同的方式来移除不可达对象, 可分为以下3种:
@@ -571,7 +606,7 @@ GC日志中的一个代表一次年轻代的GC事件:
   1. *CMS-concurrent-reset* 阶段名称 - 重置CMS算法内部数据结构,以备下次收集使用
   2. *0.012/0.012 secs* 占用时间
 
-总而言之, CMS 垃圾回收器通过将大量工作交给并发线程来做而且不需要暂停应用来减少暂停时间. 然而,它也有一些缺点, 最大的就是老年代的碎片化问题以及缺乏一个可预测的停顿时间, 这对于一些比较大的堆更为明显.
+总而言之, CMS 垃圾回收器通过将大量工作交给并发线程来做而且不需要暂停应用来减少暂停时间. 然而,它也有一些缺点, 最大的就是**老年代的碎片化问题(使用freelist记录而不compact)**以及缺乏一个可预测的停顿时间, 这对于一些比较大的堆更为明显.
 
 ## **G1 - Garbage First**
 G1的主要设计目标就是保证STW的时间和分布都可以很好的预测和配置. 事实上, Garbage-First 是一个*类实时*GC. 也就是你可以设定特定的性能要求. 你可以要求在给定的y ms中, STW的时间不能超过x ms. 比如在任何1s内都不超过5ms. G1 会尽量满足设定的目标(但不能完全肯定, 所以不是绝对实时的).
@@ -581,7 +616,7 @@ G1的主要设计目标就是保证STW的时间和分布都可以很好的预测
 
 这让垃圾收集器不需要每次都收集整个堆,而是每次*增量*的解决问题:每次只会有所有region集合的一个子集会被考虑, 称为*收集集合Collection set*.年轻代的所有region在每个暂停的时候都被收集,但是老年代只有一部分会被收集:
 ![g1-collection-set](res/gcbook/g1-collection-set.png)
-在并发阶段的另一个新奇的事就是G1会估计每个region中包含的存活对象的个数.这被用来构建Collection set:包含最多垃圾的region总是优先被收集. 这个是名称*Garbage-first*的由来.
+在并发阶段的另一个新奇的事就是G1会估计每个region中包含的存活对象的个数.这被用来构建Collection set:**包含最多垃圾的region总是优先被收集**. 这个是名称*Garbage-first*的由来.
 
 像下面这样来使用G1 GC:
 ```
@@ -731,6 +766,7 @@ G1构建于前面章节的很多概念之上. 所以在继续之前,请确保你
 具体放入收集集合的老年代区的region,以及它们被加入的顺序都基于一系列的规则选择出来的. 这些规则包括:应用设定的软的实时性能指标, 存活统计以及并发标记阶段垃圾回收的效率, 还有一系列可配的JVM 选项. 混合式收集大体上与我们前面看到fully-young相同, 但这次我们讲到新的对象*remembered sets*.
 
 remembered sets 用来支持在不同heap regions上的独立收集. 比如当收集region A,B,C, 我们只需要知道从region D和E中是否有引用到它们来决定它们的存活性.因为遍历整个堆会消耗很久的时间并且打破了我们增量收集的意义, 所以在G1中也采用了与在其他算法中采用Card Table来独立收集年轻代区域类似的优化算法, 叫做remember sets.
+
 
 如下图所示, 每个region都有一个RSet保存从其他region到这个region中对象的引用. 这些对象会被当做额外的GC roots. 注意在并发标记阶段, 老年代被认为是垃圾的对象会被忽略, 即便有外部对象还在引用它们, 因为它们的对象也会被当做垃圾.
 
