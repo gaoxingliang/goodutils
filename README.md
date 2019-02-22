@@ -35,6 +35,8 @@ https://blog.csdn.net/scugxl/article/details/42093031
 [java 各种IO](src/io/README.MD)
 可以参考博客: https://blog.csdn.net/scugxl/article/details/86742171
 
+# 缓存
+[使用FutureTask实现的高效缓存](src/multithread/UseFutureTaskImplementedCache.java)
 # software installation related
 
 [BeyondCompare](softs/beyondCompare_onMac/readme.md)
