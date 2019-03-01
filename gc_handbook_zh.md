@@ -1195,6 +1195,38 @@ Pause 页展示了总的, 平均, 最大, 最小的GC暂停, minor暂停和major
 所有的*优化器可以*通过分配优化来跟踪对象的创建. *通过对象创建的跟踪,这告诉了我们关于内存真正创建的对象*.
 <br>
 
+通过优化器, 我们可以知道应用创建对象的主要位置.相比GC优化, 优化器器还会暴露最耗费内存的对象以及线程.
+<br>
+
+下面我们会介绍3种不同的优化器:hrpof,JVisualVM和AProf.
+### **hprof**
+hprof绑定在[jdk](https://docs.oracle.com/javase/8/docs/technotes/samples/hprof.html)内部.因为它存在于所有环境中,这个是我们优先考虑的优化器.<br>
+
+为了使用hprof, 采用如下的命令行激活:
+
+```
+java -agentlib:hprof=heap=sites com.yourcompany.YourApplication
+```
+
+在应用退出后, 会在工作目录生成一个文件java.hprof.txt.用文本编辑器打开,你可以搜索
+"SITES BEGIN"就会给你如下的一些信息:
+![](img/1c91dd70.png)
+从上面可以看出每次分配时创建的对象个数. 第一行表示有64.43%的对象是int数组在编号为302116的地方创建, 然后搜索:"TRACE 302116":
+![](img/d1651f90.png)
+所以我们知道了64.43%的对象(int 数组)是在ClonableClass0006的构造函数中创建的.这样你就可以进一步优化代码了.
+译注: 测试代码可以使用[BigHeapTest](src/memory/BigHeapTest.java) 测试文件在[java.heap.txt](res/gcbook/java.hprof.txt)
+
+### **Java VisualVM**
+这是JVisualVM第二次出场. 在前面我们介绍了可以用它来监控JVM GC活动. 在这个章节我们会展示他在对象创建监控方面的能力.
+<br>
+将JVisualVM连接到你的JVM后:
+1. 打开Profiler 页, 确保 Settings里面的 Record allocation stack traces是打开的.
+2. 点击Memory按钮 开始内存采集.
+3. 等应用运行一段时间来确保工具可以收集到足够多的数据.
+4. 点击Snapshot按钮, 这里会展示收集到信息的快照.
+
+在完成上面的步骤后, 你可以看到如下的信息:
+![](img/a9247b41.png)
 
 ### 大对象
 
