@@ -1349,7 +1349,216 @@ TRACE 302173:
 所以JIT编译器直接:消除这次分配.可以查看这个[例子](https://github.com/gvsmirnov/java-perv/blob/master/labs-8/src/main/java/ru/gvsmirnov/perv/labs/jit/EscapeAnalysis.java)
 
 ## 提前提升
+在解释提前提升之前,我们需要熟悉它的基础概念--提升率. 提升率作为衡量单位时间内
+从年轻代传播到老年代的对象. 与分配率类似,一般以MB/sec作为单位.
+<br>
+JVM预期的行为是提升长时间存活的对象从年轻代到老年代. 回忆下我们前面说到的分代假设,
+我们可以构建一个场景-不止长时间存活的对象被安置在老年代. 在这个场景下,这些本来只会短时间存在的对象被提升到了老年代,这就是
+**提前提升**.
 
+### 如何测量提升率
+测量提升率的一种方式就是打开GC日志:*-XX:+PrintGCDetails -XX:+PrintGCTimeStamps*.
+这样的话,JVM就会记录如下的片段:
+![](img\f99191e3.png)
+从上面我们可以看到年轻代和整个堆在GC前和GC后的大小.知道了年轻代和整个堆的占用后,
+可以很容易计算老年代的大小.GC日志表达的信息如下:
+![](img\13d0d324.png)
+译者注: 
+```
+$$ ((youngbefore-youngafter) - (totalbefore-totalafter))/time $$
+```
+这样我们便可以提取出对应的时间段的提升率.
+我们可以看到平均的提升率是92MB/sec, 最大值是140.95MB/sec.
+<br>
+
+注意到我们只能从minor gc中提取信息. Full GC没有暴露提升率因为GC日志中暴露的老年代使用率改变也包括major gc清理掉的对象.
+
+### 为什么我需要关心?
+与分配率类似,提升率的主要影响就是GC暂停的频率.不同的是分配率影响的是*minor gc*的频率,
+而提升率则影响了*major gc*的频率. 让我解释一下--你提升到老年代的东西越多,你就更快的把它填满.
+把老年代越快的填满,那么用来清理老年代的GC就越多.
+![](img\53754e4d.png)
+正如我们前面章节看到的,FULL GC显然需要更多的时间，因为他需要与更多的对象交付并且
+执行而外的复杂的活动比如去碎片。
+<br>
+
+### 举个例子
+让我们看下另外一个有提前提升的[示例](src/memory/PrematurePromotion.java).
+在这个例子中,应用会获取一批对象data,然后累积,当一定量的对象达到后,进行批处理:
+```
+public class PrematurePromotion {
+    private static final Collection<byte[]> accumulatedChunks = new ArrayList<>();
+    private static void onNewChunk(byte[] bytes) {
+        accumulatedChunks.add(bytes);
+        if(accumulatedChunks.size() > MAX_CHUNKS) {
+        processBatch(accumulatedChunks);
+        accumulatedChunks.clear();
+    }
+ }
+}
+```
+这个应用会有提前提升的问题. 后面我们会讲到怎么验证和解决.
+
+### 我的JVM会受影响吗?
+一般来说,提前提升会有如下形式的现象:
+1. 应用运行一小段时间就有很多次FullGC.
+2. 老年代在每次Full GC后占用很低, 一般低于10-20%的老年代总大小.
+3. 提升率接近于分配率.
+
+通过我们的示例应用来展示这个问题有点技巧,我们会小小作弊一下-让对象提升到老年代稍稍早于它默认时间.
+通过如下的启动参数,我们会看到如下的GC日志：
+```
+-XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xmx24m -XX:NewSize=16m -XX:MaxTenuringThreshold=1
+```
+
+![](img\52df01fc.png)
+第一眼看去，好像过早提升并没有出现。但是事实上,老年代的占用在每次GC后都在减少. 然而如果没有更少或者没有对象被提升,我们就不会
+看到大量的Full GC事件.
+<br>
+有一个很简单的解释来解释这种现象:当有很多对象被提升到老年代,有些已有的对象会被回收.
+这就方式了老年代的使用率在下降，但是事实上有很多对象被持续的提升，进而导致FullGC。
+
+### 解决办法
+为了解决这个问题，我们需要保证年轻代可以容纳这些缓存对象。有两个办法可以做到。
+第一个是增大年轻代：-Xmx64m -XX:NewSize=32m. 这样启动饮用后我们看到Full GC次数少了很多，
+同时几乎不影响minor gc的时间：
+![](img\275073f6.png)
+
+另一个办法就是降低批处理的大小，这也会给我们一个类似的结果。
+选择哪一个解决办法取决于应用真实情况是啥. 大多数情况下,业务逻辑不允许降低批处理大小.在这种情况下,
+增加更多的内存或者重新分配内存大小是可能的解决办法.
+<br>
+如果都不行的话, 也许我们可以优化数据结构来占用更小的内存. 但是最终目的都是一样:
+让瞬时数据尽可能放在年轻代.
+
+## 弱引用 软引用和幻影引用
+另一类可能影响到GC的就是应用中的非强引用.这个可能会在某些场景下帮助避免[OutOfMemoryError](https://plumbr.eu/outofmemory),但是大量使用这些引用
+可能会加大GC对应用程序性能的影响.
+
+### 我为什么要关心?
+当使用**弱引用Weak reference**时,我们需要意识到,这些引用是可GC的。 每当CG发现某个对象是弱引用可达时，
+也就是说这个最后一个引用这个对象的是一个弱引用时，这个对象会被放到对应的**ReferenceQueue**中，然后
+变成可以适合做Finalization。可能会有人从这个ReferenceQueue中poll对象然后执行一些相关的清理活动。
+这个常见的例子就是移除cache中已经不在的key。
+
+<br>
+这里的技巧是你依然可以创建那个对象的强引用,也就是说,在执行finalize和回收之前,GC必须再次检查是否可以
+真的进行回收.也就是说,被弱引用引用的对象并不会在下个GC 周期回收.
+
+<br>
+弱引用实际上可能比你想的多的多. 许多缓存的方案都使用的弱引用. 所以即使你没有直接声明,可能在你的应用中也大概率有很多弱引用对象.
+
+<br>
+当使用**软引用Softreference**时,你只需要记住,软引用比弱引用更少被清理. 准确的说,这个取决于JVM的实现.
+一般来说,软引用的清理只在最后一次可能发生OOM之前.这也就意味着你可能会经历更长的FULLGC时间或者更平凡的full gc，
+因为在老年代中有更多的对象。
+
+<br>
+当使用**幻影引用phantom reference**时,你必须自己来做内存管理虽然这些引用会被认为是适合回收的.
+这是危险的,因为从javadoc中我们可能会认为这个很容易使用:
+
+```
+In order to ensure that a reclaimable object remains so, the referent of a phantom reference may not be retrieved:
+The get method of a phantom reference always returns null
+为了保证一个对象依然是可以回收的,幻影引用所引用的对象总是返回null
+```
+
+令人惊讶的是,很多开发者会跳过下面的一段:<br>
+```
+ Unlike soft and weak references, phantom references are not
+ * automatically cleared by the garbage collector as they are enqueued.  An
+ * object that is reachable via phantom references will remain so until all
+ * such references are cleared or themselves become unreachable.
+```
+
+不像软引用和弱引用,**幻影引用并不会在他们放入队列后被自动回收**.一个对象如果是被幻影引用可达的,这个对象会一直存在直到这个引用被清除或者他们自己变得不可达.
+
+这是对的,为了避免OOM,我们必须在幻影引用上手动调用[clear()](https://docs.oracle.com/javase/7/docs/api/java/lang/ref/Reference.html#clear()).
+这样的原因是这是唯一一个方式来找到某个对象变得不可达的方式.与soft或者weak引用不同,你不能
+复活一个幻影引用可达的对象.
+
+### 举个例子
+以下面的[例子](src/memory/WeakReferences.java)为例,这个代码会创建很多对象,并且在minor gc期间被回收.
+与前面的类似为了改变老年代的阈值来改变提升率,我们以如下启动引用:
+```
+-XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xmx24m -XX:NewSize=16m -XX:MaxTenuringThreshold=1 
+```
+![](img\4014b022.png)
+可以看到FullGC基本没有，但是让我们使用-Dweak.refs=true 为每个对象创建一个弱引用时,我们可以看到,
+很多都不一样了. 有很多原因我们可能会这么做,比如用对象作为一个weakhashmap的key来做对象分配优化.在
+任何情况下,使用弱引用可能会导致如下的现象:
+![](img\66b99f1f.png)
+你可以看到有很多的FullGC，而且时间越来越长。这是过早提升的另一个场景。但是这次有更少的技巧。 
+这个根本原因，当然是弱引用，在添加他们之前，应用创建的对象在被提升之前就死掉了，但是添加之后，他们需要一个
+额外的GC周期才会被变得适合GC.像以前一样这可以通过增大年轻代大小来解决-Xmx64m -XX:NewSize=32m:
+
+*译者注:这里因为MaxTenuringThreshold=1,在没有弱引用的时候,那些对象都因为没人引用而被回收了,但是
+弱引用会在下一个GC周期才会得到释放所以这些对象都会被放到老年代.*
+*译者注：实际测试中，不要弱引用时，基本全是minorgc，使用弱引用时，full gc频率增大，但是minorgc还是很频繁。在增大内存后，与没有弱引用时类似*
+ 
+![](img\b7a4a162.png)
+
+在使用软引用的[例子](src/memory/SoftReferences.java)中可能更糟.因为软引用可达的对象只会在
+应用快要抛出OOM时才会回收. 替换弱引用为软引用,你会看到大量的FullGC事件:
+![](img\eb028caf.png)
+
+还有最后一个例子关于幻影引用的[例子](src/memory/PhantomReferences.java).
+查看源码我们依然后看到一些参数,我们会看到与弱引用类似的GC日志. 事实上, FULLGC的暂停次数会
+比弱引用的次数少的多(因为弱应用的finalization复活属性).
+*译者注*(有少数的fullgc)
+
+然而在我们添加一个标记-Dno.ref.clearing=true后,我们会很快OOM:
+![](img\9b5b8d8a.png)
+
+所以,我们在使用幻影引用时必须十分小心,并且我们需要定期的清理幻影引用,如果不这样的话,我们会很快遇到一个OOM.
+相信我们,如果在处理referencequeue的线程遇到了没捕获的异常,你的应用会马上死掉.
+
+### 我的JVM是否受影响
+一个常见的建议就是考虑打开开关:-XX:+PrintReferenceGC 来查看不同的引用对GC的影响.
+如果我们添加这个开关到弱引用的例子中,我们会看到:
+![](img\0f5733fa.png)
+同样的, 这个可以用来分析GC是否对应用的吞吐量和延迟的影响.在这种情况下,你最好检查下这些例子.一般情况下,
+每个GC周期清理的引用数非常少,大多数情况下是0.如果不是这样,应用可能正用大量的时间来清理引用或者
+他们正在被清理,也就需要进一步的调查.
+
+### 怎么解决?
+当你证实你的应用正在误用/乱用/过度使用弱引用/软引用或者幻影引用,解决办法就是改变应用的底层逻辑.
+这是非常应用相关的,而且没有一般的指导原则.然而我们还是可以给出一些一般的解决办法:
+1. 弱引用- 如果这个问题是因为某个内存池的占用增加导致的,对应的内存池可能给出线索.在前面的例子中,增加整个堆和年轻代帮助缓解了这个问题.
+2. 幻影引用- 保证你会清理他们.  很容易没有考虑到边界case, 也有可能清理线程没法跟上queue的增加节奏或者停止清理queue.
+这样就会给GC带来很大压力并且造成OOM的风险.
+3. 软引用- 当软引用被认为是问题根源时,减轻压力的唯一办法就是修改业务底层逻辑.
+
+## 其他的例子
+在前面的章节中,我们覆盖了会导致poor gc的最常见的问题. 不幸的是,有很多特殊的case我们没法
+应用前面章节的知识. 这一个章节我们会提到一些你可能会遇到的不常见的问题.
+
+### RMI和GC
+当你的引用发布或者使用RIM服务,JVM一般会周期性的触发FullGC来保证本地没有使用的对象不会占用对端的空间.
+记住,即便你的代码没有精确的发布RMI相关服务，第三方包可能会打开RMI端口。 常见的例子是JMX,当被远程连接时,会
+它会使用RMI来发布数据。
+
+<br>
+问题可能被周期性的FULLGC暴露出来。 当你检查老年代的占用时，一般不会有啥压力因为老年代一般会有
+很多空闲空间。但是当FULLGC被触发时,所有的应用线程被暂停.
+
+<br>
+移除远端引用的方法是通过调用System.gc 在远端的class sun.rmi.transport.ObjectTable的e sun.misc.GC.requestLatency()
+方法.
+<br>
+
+对于很多应用而言,这个没啥必要或者有很明显的副作用. 为了disable这个，里可以在你的JVM启动时设置:
+```
+java -Dsun.rmi.dgc.server.gcInterval=9223372036854775807L -Dsun.rmi.dgc.client.gcInterva
+l=9223372036854775807L com.yourcompany.YourApplication
+```
+这里设置了System.gc的运行周期为Long.MAX_VALUE. 对于大多数情况,这个永远不会发生.
+<br>
+另一个办法就是disable掉System.gc()的调用(通过-XX:+DisableExplicitGC).我们并不推荐采用这个办法因为它带来的副作用.
+
+### JVMTI tagging和GC
+
+### 超大对象
 
 # 参考
 ## user/sys/real时间
@@ -1358,3 +1567,6 @@ TRACE 302173:
 - User is the amount of CPU time spent in user-mode code (outside the kernel) within the process. This is only actual CPU time used in executing the process. Other processes and time the process spends blocked do not count towards this figure.
 - Sys is the amount of CPU time spent in the kernel within the process. This means executing CPU time spent in system calls within the kernel, as opposed to library code, which is still running in user-space. Like ‘user’, this is only CPU time used by the process.
 - User+Sys will tell you how much actual CPU time your process used. Note that this is across all CPUs, so if the process has multiple threads, it could potentially exceed the wall clock time reported by Real.
+
+## GC相关演示代码
+[link](https://github.com/gvsmirnov/java-perv)
