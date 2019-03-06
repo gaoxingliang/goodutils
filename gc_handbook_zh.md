@@ -1278,9 +1278,78 @@ java -agentlib:hprof=heap=sites com.yourcompany.YourApplication
 
 如果你怀疑这是怎么办到的--*如果用更少的GC暂停/更低的频率停掉应用线程,那么你可以做更多的事情,更多的事情一般也会创建更多的对象,所以有更高的分配率*
 <br>
-
+现在在我们下结论("Eden越大越好")之前, 你应该意识到分配率可能和你应用的实际吞吐量正相关.
+这个与吞吐量的测量有关. 分配率会直接影响你的应用线程因为minor gc暂停的频率.
+但是整体上来看, 还要考虑major gc暂停和应用相关的吞吐量指标而不是MB/sec.
+<br>
 
 ### 举个例子
+比如这个[例子](src/memory/Boxing.java). 假设它与另外一个传感器一起工作来提供一个数字.
+这个应用持续的在一个专用线程中更新一个随机值.然后其他线程能看到最近更新的值并在*processSensorValue*方法中做些有意义的事情.
+```
+public class BoxingFailure {
+private static volatile Double sensorValue;
+  private static void readSensor() {
+    while(true) sensorValue = Math.random();
+  }
+  private static void processSensorValue(Double value) { 
+    if(value != null) {
+        //...
+    } 
+  }
+}
+
+```
+正如这个类名所暗示的, 这里的问题是自动封箱. 为了可以做空指针检查,作者将变量sensorValue使用了大写D-double对象.
+这个例子是一个很常见的在获取值很费操作时,基于最近的值做处理的例子. 在真实世界中,一般会比获取一个随机值更费操作.
+因此,一个线程持续生成新的值,另一个计算线程使用它们来避免费时的获取操作.
+<br>
+
+这个示例应用因为过高的分配率导致GC没法释放足够的空间而受到影响. 下面会讲到怎么验证和解决这个问题.
+
+### 我的JVM会被影响吗?
+首先,你应该只在你的吞吐量下降时才开始担心. 由于应用开始创建很多对象而且很快被丢弃了,所以minor gc频率激增. 
+在有足够的负载时,这会让GC严重影响吞吐量.
+<br>
+当你遇到这样的情形,你可能会遇到如下的相似的GC日志(以**-XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xmx32m** 运行[示例](src/memory/Boxing.java)):
+
+![](img/44725283.png)
+你应该最先注意到的是**GC事件的频率**. 这意味着有很多很多的对象被创建. 而且,**GC后的年轻代变得很低,而且没有FullGC发生**.
+这些现象都意味着GC对当前应用的吞吐量有很大影响.
+
+### 怎么解决?
+在某些情况下, 增加年轻代可以很容易的降低高分配率的影响. 这并没有降低分配率,而是降低了GC频率. 这样的可以生效的原因是每次只有少量的对象存活. 因为minor gc暂停的时间主要
+取决于**存活**对象的多少,所以GC暂停时间不会因为堆变大而显著增加.
+
+这个结果是显而易见的,以参数-Xmx64m运行[示例](src/memory/Boxing.java):
+![](img/5a78019d.png)
+
+然而就算这样, 给更多的内存显然不是一个可靠的解决方案.在有了前面内存优化器后,我们可以很容易的发现大多数垃圾在哪里产生.
+特殊的, 99%的是**Double**在**readSensor**方法创建.一个简单的优化就是将Double替换为原始类型,而且null可以替换为**Double.NaN**.
+因为原始类型并不是对象,所以不会有垃圾产生,也就没有什么可回收的了.一个存在对象的某个属性被直接覆盖而不是创建一个新的对象.
+
+译注:优化前的[hprof](res/gcbook/java.hprof-boxing.txt)
+```
+SITES BEGIN (ordered by live bytes) Wed Mar  6 17:46:11 2019
+          percent          live          alloc'ed  stack class
+ rank   self  accum     bytes objs     bytes  objs trace name
+    1 89.70% 89.70%   7797576 324899  19162752 798448 302173 java.lang.Double
+    2  0.84% 90.54%     73008   38     73008    38 300271 byte[]
+    
+TRACE 302173:
+	java.lang.Number.<init>(Number.java:55)
+	java.lang.Double.<init>(Double.java:592)
+	java.lang.Double.valueOf(Double.java:519)
+	memory.Boxing.readSensor(Boxing.java:12)
+	
+```
+
+在[简单的改动](src/memory/FixedBoxing.java)后,应用已经移除了大多数的GC暂停.在某些情况下,JVM会足够聪明的通过逃逸分析技术来决定是否移除
+大量的内存分配.简单来说,JIT编译器可以证明最近创建的某个对象从来不会逃出它创建的范围. 在这种情况下,实际上不需要再堆上创建它进而产生垃圾.
+所以JIT编译器直接:消除这次分配.可以查看这个[例子](https://github.com/gvsmirnov/java-perv/blob/master/labs-8/src/main/java/ru/gvsmirnov/perv/labs/jit/EscapeAnalysis.java)
+
+## 提前提升
+
 
 # 参考
 ## user/sys/real时间
