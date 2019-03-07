@@ -1557,6 +1557,24 @@ l=9223372036854775807L com.yourcompany.YourApplication
 另一个办法就是disable掉System.gc()的调用(通过-XX:+DisableExplicitGC).我们并不推荐采用这个办法因为它带来的副作用.
 
 ### JVMTI tagging和GC
+当你的应用与某个javaagent(-javaagent)一起运行时,有可能通过[JVMTI tagging](https://docs.oracle.com/javase/7/docs/platform/jvmti/jvmti.html#Heap)来给内存中的对象加tag.
+Agent可能因为各种原因而添加tag(这超出了我们的范畴),但是有一个GC相关的问题会影响应用的延迟和吞吐量-如果试图给
+堆上很大的对象集合打tag的话.
+
+<br>
+这里的问题是隐藏在native代码中:JvmtiTagMap::do_weak_oops这个方法会遍历所有
+的tags在每次GC事件执行时,而且还会对所有的对象执行一些不那么快速的操作. 更糟的是,这些操作是串行的而不是并行的.
+
+<br>
+当有大量的tag时,这意味着GC中的大部分时间都会被一个单线程占用而且得不到任何的并行优化.这可能大量增加GC暂停时间.
+<br>
+为了检查某个agent时候导致了额外的GC暂停,你可以打开诊断开关:–XX:+TraceJVMTIObjectTagging.
+打开这个后,你会大概得到tagmap耗费了多少本地内存和消耗了多少时间来进行遍历.
+
+<br>
+如果你不是agent的作者,一般你没法修复这个问题. 除了联系对应的agent供应商外,没有别的可以做了.
+这样的话,我们只能建议供应商清理不需要的tag.
+
 
 ### 超大对象
 
