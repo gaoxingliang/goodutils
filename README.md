@@ -18,6 +18,9 @@ Do ssl test:<br>
 可以参考我的博客, 获取通过该代码下载的算法导论和机器学习的视频文件.
 https://blog.csdn.net/scugxl/article/details/42093031
 
+# different types of reverse proxy demo
+[proxydemeo](proxydemeo)
+
 # 通过JavaParser 实现的动态替换和修改源代码的示例代码
 [javaparser.RemoveLogNotice](src/javaparser/RemoveLogNotice.java) <br>
 这里展示了如何将LogNotice 类相关的调用 替换为LogMsg的实现.
@@ -37,6 +40,8 @@ https://blog.csdn.net/scugxl/article/details/42093031
 
 # 缓存
 [使用FutureTask实现的高效缓存](src/multithread/UseFutureTaskImplementedCache.java)
+
+
 # software installation related
 
 [BeyondCompare](softs/beyondCompare_onMac/readme.md)
