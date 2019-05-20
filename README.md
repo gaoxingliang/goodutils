@@ -20,6 +20,11 @@ https://blog.csdn.net/scugxl/article/details/42093031
 
 # different types of reverse proxy demo
 [proxydemeo](proxydemeo)
+run the jetty example, it can support http and https at same endpoint:
+```
+http://127.0.0.1:9999/?testme=true   -> to a https url
+http://127.0.0.1:9999/ -> to a http url
+```
 
 # 通过JavaParser 实现的动态替换和修改源代码的示例代码
 [javaparser.RemoveLogNotice](src/javaparser/RemoveLogNotice.java) <br>

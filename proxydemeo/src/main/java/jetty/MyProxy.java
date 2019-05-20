@@ -1,10 +1,12 @@
 package jetty;
 
+import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.ContentProvider;
 import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.proxy.ProxyServlet;
 import org.eclipse.jetty.util.Callback;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -31,6 +33,11 @@ public class MyProxy extends  ProxyServlet.Transparent {
         else {
             super.service(request, response);
         }
+    }
+
+    @Override
+    protected HttpClient newHttpClient() {
+        return new HttpClient(new SslContextFactory());
     }
 
     @Override
@@ -90,7 +97,7 @@ public class MyProxy extends  ProxyServlet.Transparent {
     protected URI rewriteURI(HttpServletRequest request) {
         String _prefix = "/", _proxyTo = "";
         if (request.getQueryString() != null && request.getQueryString().contains("testme")) {
-            _proxyTo = "http://www.58158.com/";
+            _proxyTo = "https://www.baidu.com/";
             System.out.println("Redircting to another host...");
         }
         else {
