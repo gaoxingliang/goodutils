@@ -1,4 +1,4 @@
-package network;
+
 /*
  * SSLTest.java
  *
@@ -36,17 +36,21 @@ import java.security.SecureRandom;
 import java.security.Security;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 
 /**
  * A driver class to test a server's SSL/TLS support.
- *
+ * <p>
  * Usage: java SSLTest [opts] host[:port]
- *
+ * <p>
  * Try "java SSLTest -h" for help.
- *
+ * <p>
  * https://wiki.apache.org/tomcat/tools/SSLTest.java
- *
+ * <p>
  * This tester will attempts to handshake with the target host with all
  * available protocols and ciphers and report which ones were accepted and
  * which were rejected. An HTTP connection is never fully made, so these
@@ -54,14 +58,12 @@ import java.util.*;
  *
  * @author Christopher Schultz
  */
-public class SSLTest
-{
-    public static void usage()
-    {
+public class SSLTest {
+    public static void usage() {
         System.out.println("Usage: java " + SSLTest.class + " [opts] host[:port]");
         System.out.println();
         System.out.println("-sslprotocol                 Sets the SSL/TLS protocol to be used (e.g. SSL, TLS, SSLv3, TLSv1.2, etc.)");
-        System.out.println("-enabledprotocols protocols  Sets individual SSL/TLS ptotocols that should be enabled");
+        System.out.println("-enabledprotocols protocols  Sets individual SSL/TLS ptotocols that should be enabled (e.g. SSL, TLS, SSLv3, TLSv1.2, etc.)");
         System.out.println("-ciphers cipherspec          A comma-separated list of SSL/TLS ciphers");
 
         System.out.println("-truststore                  Sets the trust store for connections");
@@ -80,8 +82,7 @@ public class SSLTest
 
 
     public static void main(String[] args)
-        throws Exception
-    {
+            throws Exception {
 
 
         System.out.println("Current AES length - " + JCEUtils.getAESMaxKeyLength());
@@ -98,7 +99,7 @@ public class SSLTest
         String trustStoreProvider = System.getProperty("javax.net.ssl.trustStoreProvider");
         String trustStoreAlgorithm = null;
         String sslProtocol = "TLS";
-        String[] sslEnabledProtocols = new String[] { "SSLv2", "SSLv2hello", "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2" };
+        String[] sslEnabledProtocols = new String[]{"SSLv2", "SSLv2hello", "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2"};
         String[] sslCipherSuites = null; // Default = default for protocol
         String crlFilename = null;
         boolean showCerts = false;
@@ -108,22 +109,20 @@ public class SSLTest
         boolean enableSNI = false;
         boolean enableBouncyCastle = false;
 
-        if(args.length < 1)
-        {
+        if (args.length < 1) {
             usage();
             System.exit(0);
         }
 
         int argIndex;
-        for(argIndex = 0; argIndex < args.length; ++argIndex)
-        {
+        for (argIndex = 0; argIndex < args.length; ++argIndex) {
             String arg = args[argIndex];
 
-            if(!arg.startsWith("-"))
+            if (!arg.startsWith("-"))
                 break;
-            else if("--".equals(arg))
+            else if ("--".equals(arg))
                 break;
-            else if("-no-check-certificate".equals(arg))
+            else if ("-no-check-certificate".equals(arg))
                 disableCertificateChecking = true;
             else if ("-unlimited-jce".equals(arg)) {
                 unlimitedJCE = true;
@@ -131,53 +130,51 @@ public class SSLTest
             else if ("-skip-ciphers-test".equals(arg)) {
                 skipCiphersTest = true;
             }
-            else if("-no-verify-hostname".equals(arg))
+            else if ("-no-verify-hostname".equals(arg))
                 disableHostnameVerification = true;
-            else if("-sslprotocol".equals(arg))
+            else if ("-sslprotocol".equals(arg))
                 sslProtocol = args[++argIndex];
-            else if("-enabledprotocols".equals(arg))
+            else if ("-enabledprotocols".equals(arg))
                 sslEnabledProtocols = args[++argIndex].split("\\s*,\\s*");
-            else if("-ciphers".equals(arg))
+            else if ("-ciphers".equals(arg))
                 sslCipherSuites = args[++argIndex].split("\\s*,\\s*");
-            else if("-connecttimeout".equals(arg))
+            else if ("-connecttimeout".equals(arg))
                 connectTimeout = Integer.parseInt(args[++argIndex]);
-            else if("-readtimeout".equals(arg))
+            else if ("-readtimeout".equals(arg))
                 readTimeout = Integer.parseInt(args[++argIndex]);
-            else if("-truststore".equals(arg))
+            else if ("-truststore".equals(arg))
                 trustStoreFilename = args[++argIndex];
-            else if("-truststoretype".equals(arg))
+            else if ("-truststoretype".equals(arg))
                 trustStoreType = args[++argIndex];
-            else if("-truststorepassword".equals(arg))
+            else if ("-truststorepassword".equals(arg))
                 trustStorePassword = args[++argIndex];
-            else if("-truststoreprovider".equals(arg))
+            else if ("-truststoreprovider".equals(arg))
                 trustStoreProvider = args[++argIndex];
-            else if("-truststorealgorithm".equals(arg))
+            else if ("-truststorealgorithm".equals(arg))
                 trustStoreAlgorithm = args[++argIndex];
-            else if("-showcerts".equals(arg))
+            else if ("-showcerts".equals(arg))
                 showCerts = true;
             else if ("-sni".equals(arg)) {
                 enableSNI = true;
-            } else if ("-bouncy".equals(arg)) {
+            }
+            else if ("-bouncy".equals(arg)) {
                 enableBouncyCastle = true;
             }
-            else if("--help".equals(arg)
+            else if ("--help".equals(arg)
                     || "-h".equals(arg)
-                    || "-help".equals(arg))
-            {
+                    || "-help".equals(arg)) {
                 usage();
                 System.exit(0);
             }
-            else
-            {
+            else {
                 System.out.println("Unrecognized option: " + arg);
                 System.exit(1);
             }
         }
 
-        if(argIndex >= args.length)
-        {
+        if (argIndex >= args.length) {
             System.out.println("Unexpected additional arguments: "
-                               + java.util.Arrays.asList(args).subList(argIndex, args.length));
+                    + Arrays.asList(args).subList(argIndex, args.length));
 
             usage();
             System.exit(1);
@@ -195,32 +192,32 @@ public class SSLTest
                 Security.addProvider(new BouncyCastleProvider());
 
                 //BC is the ID for the Bouncy Castle provider;
-                if (Security.getProvider("BC") == null){
+                if (Security.getProvider("BC") == null) {
                     System.out.println("!!!Bouncy Castle provider is NOT available");
                 }
-                else{
+                else {
                     System.out.println("Aha Bouncy Castle provider is available");
+                }
             }
-            } catch (Throwable e) {
+            catch (Throwable e) {
 
             }
         }
 
-        if(disableHostnameVerification)
+        if (disableHostnameVerification)
             SSLUtils.disableSSLHostnameVerification();
 
         TrustManager[] trustManagers;
-        if(disableCertificateChecking
-           || "true".equalsIgnoreCase(System.getProperty("disable.ssl.cert.checks")))
-        {
+        if (disableCertificateChecking
+                || "true".equalsIgnoreCase(System.getProperty("disable.ssl.cert.checks"))) {
             trustManagers = SSLUtils.getTrustAllCertsTrustManagers();
         }
-        else if(null != trustStoreFilename)
-        {
-            if(null == trustStoreType)
+        else if (null != trustStoreFilename) {
+            if (null == trustStoreType)
                 trustStoreType = "JKS";
 
-            trustManagers = SSLUtils.getTrustManagers(trustStoreFilename, trustStorePassword, trustStoreType, trustStoreProvider, trustStoreAlgorithm, null, crlFilename);
+            trustManagers = SSLUtils.getTrustManagers(trustStoreFilename, trustStorePassword, trustStoreType, trustStoreProvider,
+                    trustStoreAlgorithm, null, crlFilename);
         }
         else
             trustManagers = null;
@@ -229,8 +226,7 @@ public class SSLTest
         String host = args[argIndex];
 
         int pos = host.indexOf(':');
-        if(pos > 0)
-        {
+        if (pos > 0) {
             port = Integer.parseInt(host.substring(pos + 1));
             host = host.substring(0, pos);
         }
@@ -240,21 +236,18 @@ public class SSLTest
 
         List<String> supportedProtocols;
 
-        if(null == sslEnabledProtocols)
-        {
+        if (null == sslEnabledProtocols) {
             // Auto-detect protocols
             ArrayList<String> protocols = new ArrayList<String>();
             // TODO: Allow the specification of a specific provider (or set?)
-            for(Provider provider : Security.getProviders())
-            {
-                for(Object prop : provider.keySet())
-                {
-                    String key = (String)prop;
-                    if(key.startsWith("SSLContext.")
-                       && !key.equals("SSLContext.Default")
-                       && key.matches(".*[0-9].*"))
+            for (Provider provider : Security.getProviders()) {
+                for (Object prop : provider.keySet()) {
+                    String key = (String) prop;
+                    if (key.startsWith("SSLContext.")
+                            && !key.equals("SSLContext.Default")
+                            && key.matches(".*[0-9].*"))
                         protocols.add(key.substring("SSLContext.".length()));
-                    else if(key.startsWith("Alg.Alias.SSLContext.")
+                    else if (key.startsWith("Alg.Alias.SSLContext.")
                             && key.matches(".*[0-9].*"))
                         protocols.add(key.substring("Alg.Alias.SSLContext.".length()));
                 }
@@ -264,8 +257,7 @@ public class SSLTest
             supportedProtocols = protocols;
             sslEnabledProtocols = supportedProtocols.toArray(new String[supportedProtocols.size()]);
         }
-        else
-        {
+        else {
             supportedProtocols = new ArrayList<String>(Arrays.asList(sslEnabledProtocols));
         }
 
@@ -282,21 +274,17 @@ public class SSLTest
 
         InetSocketAddress address = new InetSocketAddress(host, port);
 
-        for(String protocol : sslEnabledProtocols)
-        {
+        for (String protocol : sslEnabledProtocols) {
             SSLContext sc;
-            try
-            {
+            try {
                 sc = SSLContext.getInstance(protocol);
             }
-            catch (NoSuchAlgorithmException nsae)
-            {
+            catch (NoSuchAlgorithmException nsae) {
                 System.out.print(String.format(reportFormat, "-----", protocol, " Not supported by client"));
                 supportedProtocols.remove(protocol);
                 continue;
             }
-            catch (Exception e)
-            {
+            catch (Exception e) {
                 e.printStackTrace();
                 continue; // Skip this protocol
             }
@@ -306,34 +294,31 @@ public class SSLTest
             // Restrict cipher suites to those specified by sslCipherSuites
             HashSet<String> cipherSuites = new HashSet<String>();
             cipherSuites.addAll(Arrays.asList(sc.getSocketFactory().getSupportedCipherSuites()));
-            if(null != sslCipherSuites)
+            if (null != sslCipherSuites)
                 cipherSuites.retainAll(Arrays.asList(sslCipherSuites));
 
-            if(cipherSuites.isEmpty())
-            {
+            if (cipherSuites.isEmpty()) {
                 System.err.println("No overlapping cipher suites found for protocol " + protocol);
                 supportedProtocols.remove(protocol);
                 continue; // Go to the next protocol
             }
 
-            for(String cipherSuite : cipherSuites)
-            {
+            for (String cipherSuite : cipherSuites) {
                 String status;
 
                 SSLSocketFactory sf = SSLUtils.getSSLSocketFactory(protocol,
-                                                                   new String[] { protocol },
-                                                                   new String[] { cipherSuite },
-                                                                   rand,
-                                                                   trustManagers);
+                        new String[]{protocol},
+                        new String[]{cipherSuite},
+                        rand,
+                        trustManagers);
 
                 if (enableSNI && sf instanceof SSLUtils.CustomSSLSocketFactory) {
-                    ((SSLUtils.CustomSSLSocketFactory)sf).setExpectedHost(host);
+                    ((SSLUtils.CustomSSLSocketFactory) sf).setExpectedHost(host);
                 }
 
                 Socket sock = null;
 
-                try
-                {
+                try {
                     //
                     // Note: SSLSocketFactory has several create() methods.
                     // Those that take arguments all connect immediately
@@ -348,7 +333,7 @@ public class SSLTest
                     sock.connect(address, connectTimeout);
 
                     // Wrap plain socket in an SSL socket
-                    SSLSocket socket = (SSLSocket)sf.createSocket(sock, host, port, true);
+                    SSLSocket socket = (SSLSocket) sf.createSocket(sock, host, port, true);
                     socket.startHandshake();
 
                     assert protocol.equals(socket.getSession().getProtocol());
@@ -356,48 +341,47 @@ public class SSLTest
 
                     status = "Accepted";
                 }
-                catch (SocketTimeoutException ste)
-                {
+                catch (SocketTimeoutException ste) {
                     status = "Failed";
                 }
-                catch (IOException ioe)
-                {
+                catch (IOException ioe) {
                     // System.out.println(ioe);
                     status = "Rejected";
                 }
-                catch (Exception e)
-                {
+                catch (Exception e) {
                     System.out.print(e.getMessage());
                     status = "Rejected";
                 }
-                finally
-                {
-                    if(null != sock) try { sock.close(); }
-                    catch (IOException ioe) { ioe.printStackTrace(); }
+                finally {
+                    if (null != sock) try {
+                        sock.close();
+                    }
+                    catch (IOException ioe) {
+                        ioe.printStackTrace();
+                    }
                 }
                 System.out.print(String.format(reportFormat,
-                                               status,
-                                               protocol,
-                                               cipherSuite));
+                        status,
+                        protocol,
+                        cipherSuite));
 
             }
         }
 
-        if(supportedProtocols.isEmpty())
-        {
+        if (supportedProtocols.isEmpty()) {
             System.err.println("No protocols ");
         }
         // Now get generic and allow the server to decide on the protocol and cipher suite
         String[] protocolsToTry = supportedProtocols.toArray(new String[supportedProtocols.size()]);
 
         SSLSocketFactory sf = SSLUtils.getSSLSocketFactory(sslProtocol,
-                                                           protocolsToTry,
-                                                           sslCipherSuites,
-                                                           rand,
-                                                           trustManagers);
+                protocolsToTry,
+                sslCipherSuites,
+                rand,
+                trustManagers);
 
         if (enableSNI && sf instanceof SSLUtils.CustomSSLSocketFactory) {
-            ((SSLUtils.CustomSSLSocketFactory)sf).setExpectedHost(host);
+            ((SSLUtils.CustomSSLSocketFactory) sf).setExpectedHost(host);
             System.out.println("SNI enabled, expected host - " + host);
         }
 
@@ -408,8 +392,7 @@ public class SSLTest
 
         Socket sock = null;
 
-        try
-        {
+        try {
             //
             // Note: SSLSocketFactory has several create() methods.
             // Those that take arguments all connect immediately
@@ -424,24 +407,21 @@ public class SSLTest
             sock.setSoTimeout(readTimeout);
 
             // Wrap plain socket in an SSL socket
-            SSLSocket socket = (SSLSocket)sf.createSocket(sock, host, port, true);
+            SSLSocket socket = (SSLSocket) sf.createSocket(sock, host, port, true);
             socket.startHandshake();
 
             System.out.print("Given this client's capabilities ("
-                             + supportedProtocols
-                             + "), the server prefers protocol=");
+                    + supportedProtocols
+                    + "), the server prefers protocol=");
             System.out.print(socket.getSession().getProtocol());
             System.out.print(", cipher=");
             System.out.println(socket.getSession().getCipherSuite());
 
-            if(showCerts)
-            {
-                for(Certificate cert : socket.getSession().getPeerCertificates())
-                {
+            if (showCerts) {
+                for (Certificate cert : socket.getSession().getPeerCertificates()) {
                     System.out.println("Certificate: " + cert.getType());
-                    if("X.509".equals(cert.getType()))
-                    {
-                        X509Certificate x509 = (X509Certificate)cert;
+                    if ("X.509".equals(cert.getType())) {
+                        X509Certificate x509 = (X509Certificate) cert;
                         System.out.println("Subject: " + x509.getSubjectDN());
                         System.out.println("Issuer: " + x509.getIssuerDN());
                         System.out.println("Serial: " + x509.getSerialNumber());
@@ -449,27 +429,30 @@ public class SSLTest
 //                        System.out.println("cert bytes: " + toHexString(cert.getEncoded()));
 //                        System.out.println("cert bytes: " + cert.getPublicKey());
                     }
-                    else
-                    {
+                    else {
                         System.out.println("Unknown certificate type (" + cert.getType() + "): " + cert);
                     }
                 }
             }
         }
-        finally
-        {
-            if (null != sock) try { sock.close(); }
-            catch (IOException ioe) { ioe.printStackTrace(); }
+        finally {
+            if (null != sock) try {
+                sock.close();
+            }
+            catch (IOException ioe) {
+                ioe.printStackTrace();
+            }
         }
     }
-    static final char[] hexChars = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 'b', 'c', 'd', 'e', 'f' };
-    static String toHexString(byte[] bytes)
-    {
+
+    static final char[] hexChars = new char[]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+    static String toHexString(byte[] bytes) {
         StringBuilder sb = new StringBuilder(bytes.length * 2);
 
-        for(byte b : bytes)
+        for (byte b : bytes)
             sb.append(hexChars[(b >> 4) & 0x0f])
-              .append(hexChars[b & 0x0f]);
+                    .append(hexChars[b & 0x0f]);
 
         return sb.toString();
     }

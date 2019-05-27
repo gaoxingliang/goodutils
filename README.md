@@ -3,9 +3,6 @@ good utils methods, a repo contains some helpful utils methods.
 Add a support for 
 `gradle fatjar`
 
-# SSLTest
-Do ssl test:<br>
-`java -cp goodutils.jar SSLTest baidu.com`
 ## PRoxy test
 [proxytest in java](src/network/ProxyTest.java)<br>
 [setup a proxy](src/network/ConfigAProxyByCCProxy.md)
@@ -46,6 +43,18 @@ http://127.0.0.1:9999/ -> to a http url
 # 缓存
 [使用FutureTask实现的高效缓存](src/multithread/UseFutureTaskImplementedCache.java)
 
+
+# SSL diagnose
+diagnose ssl relates protocols and ciphers:
+build it with:<br>
+```
+gradle fatjar
+``` 
+[SSLTest](ssltest/src/main/java/SSLTest.java)
+run it with:
+```
+java -cp ssltest-0.0.1.jar SSLTest -enabledprotocols TLS -sslprotocol TLSv1.2 -no-check-certificate -no-verify-hostname -unlimited-jce -sni -ciphers TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384 baidu.com:443
+```
 
 # software installation related
 

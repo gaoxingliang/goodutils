@@ -1,26 +1,21 @@
-package network;/*
- * SSLUtils.java
- *
- * Contains useful SSL/TLS methods.
- *
- * Copyright (c) 2015 Christopher Schultz
- *
- * Christopher Schultz licenses this file to You under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
+import sun.net.util.IPAddressUtil;
 
-import sun.security.ssl.SSLSocketImpl;
-
-import javax.net.ssl.*;
+import javax.net.ssl.CertPathTrustManagerParameters;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.ManagerFactoryParameters;
+import javax.net.ssl.SNIHostName;
+import javax.net.ssl.SNIServerName;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -29,9 +24,27 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.security.*;
-import java.security.cert.*;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.SecureRandom;
+import java.security.cert.CRL;
+import java.security.cert.CRLException;
+import java.security.cert.CertPathParameters;
+import java.security.cert.CertStore;
+import java.security.cert.CertStoreParameters;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.CollectionCertStoreParameters;
+import java.security.cert.PKIXBuilderParameters;
+import java.security.cert.X509CertSelector;
+import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Lots of useful SSL-related goodies.
@@ -131,7 +144,7 @@ public class SSLUtils {
      * This is just a wrapper around that customization.
      */
     public static class CustomSSLSocketFactory
-            extends javax.net.ssl.SSLSocketFactory {
+            extends SSLSocketFactory {
         private final String[] _sslEnabledProtocols;
         private final String[] _sslCipherSuites;
         private final SSLSocketFactory _base;
@@ -157,6 +170,9 @@ public class SSLUtils {
 
         void setExpectedHost(String host) {
             expectedHost = host;
+            if (rawToSNIHostName(host) == null) {
+                System.out.println("[WARN] This is not a valid SNI name for jdk - " + host);
+            }
         }
 
         public String[] getDefaultCipherSuites() {
@@ -175,8 +191,13 @@ public class SSLUtils {
 
             socket.setEnabledCipherSuites(_sslCipherSuites);
 
-            if (s instanceof SSLSocketImpl && expectedHost != null) {
-                ((SSLSocketImpl) s).setHost(expectedHost);
+            if (expectedHost != null) {
+                // enable SNI here
+                SSLParameters params = socket.getSSLParameters();
+                List<SNIServerName> names = new ArrayList<>();
+                names.add(new SNIHostName(expectedHost));
+                params.setServerNames(names);
+                socket.setSSLParameters(params);
             }
 
 
@@ -226,7 +247,7 @@ public class SSLUtils {
      * This is just a wrapper around that customization.
      */
     public static class CustomSSLServerSocketFactory
-            extends javax.net.ssl.SSLServerSocketFactory {
+            extends SSLServerSocketFactory {
         private final String[] _sslEnabledProtocols;
         private final String[] _sslCipherSuites;
         private final SSLServerSocketFactory _base;
@@ -507,4 +528,38 @@ public class SSLUtils {
             }
         }
     }
+
+
+        /**
+         *
+         * Source code: sun.security.ssl.Utilities#rawToSNIHostName(java.lang.String)
+         *
+         * Converts string hostname to {@code SNIHostName}.
+         * <P>
+         * Note that to check whether a hostname is a valid domain name, we cannot
+         * use the hostname resolved from name services.  For virtual hosting,
+         * multiple hostnames may be bound to the same IP address, so the hostname
+         * resolved from name services is not always reliable.
+         *
+         * @param  hostname
+         *         the raw hostname
+         * @return an instance of {@link SNIHostName}, or null if the hostname does
+         *         not look like a FQDN
+         */
+        public static SNIHostName rawToSNIHostName(String hostname) {
+            SNIHostName sniHostName = null;
+            if (hostname != null && hostname.indexOf('.') > 0 &&
+                    !hostname.endsWith(".") &&
+                    !IPAddressUtil.isIPv4LiteralAddress(hostname) &&
+                    !IPAddressUtil.isIPv6LiteralAddress(hostname)) {
+
+                try {
+                    sniHostName = new SNIHostName(hostname);
+                }
+                catch (IllegalArgumentException iae) {
+                }
+            }
+
+            return sniHostName;
+        }
 }
