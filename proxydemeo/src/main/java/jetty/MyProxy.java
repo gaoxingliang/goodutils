@@ -1,8 +1,6 @@
 package jetty;
 
 import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.jetty.client.api.ContentProvider;
-import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.proxy.ProxyServlet;
 import org.eclipse.jetty.util.Callback;
@@ -41,36 +39,6 @@ public class MyProxy extends  ProxyServlet.Transparent {
     }
 
     @Override
-    protected void copyHeaders(HttpServletRequest clientRequest, Request proxyRequest) {
-        super.copyHeaders(clientRequest, proxyRequest);
-    }
-
-    @Override
-    protected ContentProvider proxyRequestContent(Request proxyRequest, HttpServletRequest request) throws IOException {
-        return super.proxyRequestContent(proxyRequest, request);
-    }
-
-    @Override
-    protected Response.Listener newProxyResponseListener(HttpServletRequest request, HttpServletResponse response) {
-        return super.newProxyResponseListener(request, response);
-    }
-
-    @Override
-    protected void onClientRequestFailure(Request proxyRequest, HttpServletRequest request, Throwable failure) {
-        super.onClientRequestFailure(proxyRequest, request, failure);
-    }
-
-    @Override
-    protected void onRewriteFailed(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        super.onRewriteFailed(request, response);
-    }
-
-    @Override
-    protected void onResponseHeaders(HttpServletRequest request, HttpServletResponse response, Response proxyResponse) {
-        super.onResponseHeaders(request, response, proxyResponse);
-    }
-
-    @Override
     protected String filterServerResponseHeader(HttpServletRequest clientRequest, Response serverResponse, String headerName,
                                                 String headerValue) {
         return super.filterServerResponseHeader(clientRequest, serverResponse, headerName, headerValue);
@@ -82,19 +50,10 @@ public class MyProxy extends  ProxyServlet.Transparent {
         super.onResponseContent(request, response, proxyResponse, buffer, offset, length, callback);
     }
 
-    @Override
-    protected void onResponseSuccess(HttpServletRequest request, HttpServletResponse response, Response proxyResponse) {
-        super.onResponseSuccess(request, response, proxyResponse);
-    }
 
     @Override
-    protected void onResponseFailure(HttpServletRequest request, HttpServletResponse response, Response proxyResponse,
-                                     Throwable failure) {
-        super.onResponseFailure(request, response, proxyResponse, failure);
-    }
+    protected String rewriteTarget(HttpServletRequest request) {
 
-    @Override
-    protected URI rewriteURI(HttpServletRequest request) {
         String _prefix = "/", _proxyTo = "";
         if (request.getQueryString() != null && request.getQueryString().contains("testme")) {
             _proxyTo = "https://www.baidu.com/";
@@ -119,16 +78,7 @@ public class MyProxy extends  ProxyServlet.Transparent {
             uri.append("?").append(query);
         URI rewrittenURI = URI.create(uri.toString()).normalize();
 
-        return rewrittenURI;
+        return rewrittenURI.toString();
     }
 
-    @Override
-    protected void customizeProxyRequest(Request proxyRequest, HttpServletRequest request) {
-        super.customizeProxyRequest(proxyRequest, request);
-    }
-
-    @Override
-    protected String filterResponseHeader(HttpServletRequest request, String headerName, String headerValue) {
-        return super.filterResponseHeader(request, headerName, headerValue);
-    }
 }
