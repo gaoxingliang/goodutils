@@ -33,7 +33,7 @@ import java.io.Writer;
 public class JettyIssue {
 
     private static final int PORT = 9999;
-    private static final String DUMMY_ADDR = "https://google.com";
+    private static final String PROXY_ADDR = "https://google.com";
     public static final String LOCAL_ADDR = "0.0.0.0";
 
 
@@ -56,20 +56,20 @@ public class JettyIssue {
         // Setup proxy handler to handle CONNECT methods
         ConnectHandler proxy = new ConnectHandler();
         server.setHandler(proxy);
-        server.setErrorHandler(new LMErrorHandler());
+        server.setErrorHandler(new ExampleErrorHandler());
 
         // Setup proxy servlet
         ServletContextHandler context = new ServletContextHandler(proxy, "/", ServletContextHandler.SESSIONS);
         ServletHolder proxyServlet = new ServletHolder(LMTransparent.class);
 
-        // a dummy conf...
-        proxyServlet.setInitParameter("proxyTo", DUMMY_ADDR);
+
+        proxyServlet.setInitParameter("proxyTo", PROXY_ADDR);
         context.addServlet(proxyServlet, "/*");
         server.start();
     }
 
 
-    public static class LMErrorHandler extends ErrorHandler {
+    public static class ExampleErrorHandler extends ErrorHandler {
 
         @Override
         protected void generateAcceptableResponse(Request baseRequest, HttpServletRequest request, HttpServletResponse response, int code,
@@ -87,7 +87,7 @@ public class JettyIssue {
 
         @Override
         protected void handleErrorPage(HttpServletRequest request, Writer writer, int code, String message) throws IOException {
-            writer.write("Found an error - " + message + " with code - " + code);
+            writer.write("We found an error - " + message + " with code - " + code);
         }
     }
 
