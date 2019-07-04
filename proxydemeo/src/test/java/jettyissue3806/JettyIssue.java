@@ -1,5 +1,6 @@
 package jettyissue3806;
 
+import org.eclipse.jetty.http.MimeTypes;
 import org.eclipse.jetty.proxy.ConnectHandler;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Request;
@@ -73,7 +74,10 @@ public class JettyIssue {
         @Override
         protected void generateAcceptableResponse(Request baseRequest, HttpServletRequest request, HttpServletResponse response, int code,
                                                   String message, String mimeType) throws IOException {
-            super.generateAcceptableResponse(baseRequest, request, response, code, message, mimeType);
+
+            //baseRequest.getHttpFields().remove(HttpHeader.ACCEPT);
+            //baseRequest.getHttpFields().add(HttpHeader.ACCEPT, MimeTypes.Type.TEXT_HTML.asString());
+            super.generateAcceptableResponse(baseRequest, request, response, code, message, MimeTypes.Type.TEXT_HTML.asString());
             /**
              * We found the chrome added a Accept type since chrome 73.
              * and this cause the error message is not showing eg when a port is redirected from 80 to 443.
