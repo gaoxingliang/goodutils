@@ -14,8 +14,10 @@ public class HttpsConnectionTest {
         }
         boolean ignoreSSL = Boolean.getBoolean("ignoreSSL");
         if (ignoreSSL) {
+            /**
             SSLUtils.disableSSLHostnameVerification();
             SSLUtils.disableHttpsCertVerification();
+             */
         }
         String urlStr = args[0];
         URL url = new URL(urlStr);
