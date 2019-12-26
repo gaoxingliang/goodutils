@@ -1,0 +1,91 @@
+[root@centos7 ~]# /usr/local/logicmonitor/agent/jre/bin/java -XX:+UnlockExperimentalVMOptions -Xlog:gc* -Xmx60m -XX:+UseZGC TExample
+[0.007s][info][gc,init] Initializing The Z Garbage Collector
+[0.007s][info][gc,init] Version: 11.0.4+11-LTS (release)
+[0.007s][info][gc,init] NUMA Support: Disabled
+[0.007s][info][gc,init] CPUs: 4 total, 4 available
+[0.007s][info][gc,init] Memory: 3837M
+[0.007s][info][gc,init] Large Page Support: Disabled
+[0.007s][info][gc,init] Workers: 3 parallel, 1 concurrent
+[0.008s][info][gc,init] Heap backed by file: /memfd:java_heap
+[0.008s][info][gc,init] Available space on backing filesystem: N/A
+[0.019s][info][gc,init] Pre-touching: Disabled
+[0.019s][info][gc,init] Pre-mapping: 22M
+[0.053s][info][gc,init] Runtime Workers: 3 parallel
+[0.054s][info][gc     ] Using The Z Garbage Collector
+[0.198s][info][gc,start] GC(0) Garbage Collection (Warmup)
+[0.198s][info][gc,phases] GC(0) Pause Mark Start 0.366ms
+[0.208s][info][gc,phases] GC(0) Concurrent Mark 9.275ms
+[0.208s][info][gc,phases] GC(0) Pause Mark End 0.674ms
+[0.209s][info][gc,phases] GC(0) Concurrent Process Non-Strong References 0.256ms
+[0.209s][info][gc,phases] GC(0) Concurrent Reset Relocation Set 0.000ms
+[0.209s][info][gc,phases] GC(0) Concurrent Destroy Detached Pages 0.000ms
+[0.212s][info][gc,phases] GC(0) Concurrent Select Relocation Set 2.783ms
+[0.213s][info][gc,phases] GC(0) Concurrent Prepare Relocation Set 1.222ms
+[0.215s][info][gc,phases] GC(0) Pause Relocate Start 0.489ms
+[0.217s][info][gc,phases] GC(0) Concurrent Relocate 1.464ms
+[0.217s][info][gc,load  ] GC(0) Load: 2.43/0.91/0.47
+[0.217s][info][gc,mmu   ] GC(0) MMU: 2ms/66.3%, 5ms/86.5%, 10ms/88.4%, 20ms/92.3%, 50ms/96.9%, 100ms/98.5%
+[0.217s][info][gc,marking] GC(0) Mark: 1 stripe(s), 3 proactive flush(es), 2 terminate flush(es), 0 completion(s), 0 continuation(s)
+[0.217s][info][gc,reloc  ] GC(0) Relocation: Successful, 0M relocated
+[0.217s][info][gc,nmethod] GC(0) NMethods: 9 registered, 0 unregistered
+[0.217s][info][gc,metaspace] GC(0) Metaspace: 4M used, 4M capacity, 4M committed, 8M reserved
+[0.217s][info][gc,ref      ] GC(0) Soft: 60 encountered, 0 discovered, 0 enqueued
+[0.217s][info][gc,ref      ] GC(0) Weak: 95 encountered, 71 discovered, 12 enqueued
+[0.217s][info][gc,ref      ] GC(0) Final: 0 encountered, 0 discovered, 0 enqueued
+[0.217s][info][gc,ref      ] GC(0) Phantom: 1 encountered, 1 discovered, 0 enqueued
+[0.217s][info][gc,heap     ] GC(0)                Mark Start          Mark End        Relocate Start      Relocate End           High               Low
+[0.217s][info][gc,heap     ] GC(0)  Capacity:       60M (100%)         60M (100%)         60M (100%)         60M (100%)         60M (100%)         60M (100%)
+[0.217s][info][gc,heap     ] GC(0)   Reserve:       38M (63%)          38M (63%)          38M (63%)          38M (63%)          38M (63%)          38M (63%)
+[0.217s][info][gc,heap     ] GC(0)      Free:       16M (27%)          14M (23%)          14M (23%)          14M (23%)          16M (27%)           8M (13%)
+[0.217s][info][gc,heap     ] GC(0)      Used:        6M (10%)           8M (13%)           8M (13%)           8M (13%)          14M (23%)           6M (10%)
+[0.217s][info][gc,heap     ] GC(0)      Live:         -                 0M (1%)            0M (1%)            0M (1%)             -                  -
+[0.217s][info][gc,heap     ] GC(0) Allocated:         -                 2M (3%)            2M (3%)            8M (13%)            -                  -
+[0.217s][info][gc,heap     ] GC(0)   Garbage:         -                 5M (9%)            5M (9%)            5M (9%)             -                  -
+[0.217s][info][gc,heap     ] GC(0) Reclaimed:         -                  -                 0M (0%)            0M (0%)             -                  -
+[0.217s][info][gc          ] GC(0) Garbage Collection (Warmup) 6M(10%)->8M(13%)
+[0.266s][info][gc,start    ] GC(1) Garbage Collection (Allocation Stall)
+[0.266s][info][gc,ref      ] GC(1) Clearing All Soft References
+[0.266s][info][gc,phases   ] GC(1) Pause Mark Start 0.116ms
+[0.272s][info][gc,phases   ] GC(1) Concurrent Mark 5.909ms
+[0.273s][info][gc,phases   ] GC(1) Pause Mark End 0.358ms
+[0.273s][info][gc,phases   ] GC(1) Concurrent Process Non-Strong References 0.191ms
+[0.273s][info][gc,phases   ] GC(1) Concurrent Reset Relocation Set 0.090ms
+[0.273s][info][gc,phases   ] GC(1) Concurrent Destroy Detached Pages 0.000ms
+[0.275s][info][gc,phases   ] GC(1) Concurrent Select Relocation Set 1.311ms
+[0.275s][info][gc,phases   ] GC(1) Concurrent Prepare Relocation Set 0.559ms
+[0.277s][info][gc,phases   ] GC(1) Pause Relocate Start 1.487ms
+[0.280s][info][gc,phases   ] GC(1) Concurrent Relocate 3.176ms
+[0.280s][info][gc,load     ] GC(1) Load: 2.43/0.91/0.47
+[0.280s][info][gc,mmu      ] GC(1) MMU: 2ms/25.7%, 5ms/63.1%, 10ms/81.6%, 20ms/90.2%, 50ms/96.1%, 100ms/96.5%
+[0.280s][info][gc,marking  ] GC(1) Mark: 2 stripe(s), 2 proactive flush(es), 1 terminate flush(es), 0 completion(s), 0 continuation(s)
+[0.280s][info][gc,reloc    ] GC(1) Relocation: Successful, 3M relocated
+[0.280s][info][gc,nmethod  ] GC(1) NMethods: 35 registered, 0 unregistered
+[0.280s][info][gc,metaspace] GC(1) Metaspace: 4M used, 4M capacity, 5M committed, 8M reserved
+[0.280s][info][gc,ref      ] GC(1) Soft: 95 encountered, 48 discovered, 12 enqueued
+[0.280s][info][gc,ref      ] GC(1) Weak: 197 encountered, 147 discovered, 37 enqueued
+[0.280s][info][gc,ref      ] GC(1) Final: 0 encountered, 0 discovered, 0 enqueued
+[0.280s][info][gc,ref      ] GC(1) Phantom: 3 encountered, 3 discovered, 2 enqueued
+[0.280s][info][gc,heap     ] GC(1)                Mark Start          Mark End        Relocate Start      Relocate End           High               Low
+[0.280s][info][gc,heap     ] GC(1)  Capacity:       60M (100%)         60M (100%)         60M (100%)         60M (100%)         60M (100%)         60M (100%)
+[0.280s][info][gc,heap     ] GC(1)   Reserve:       38M (63%)          38M (63%)          38M (63%)          38M (63%)          38M (63%)          36M (60%)
+[0.280s][info][gc,heap     ] GC(1)      Free:        4M (7%)            4M (7%)            4M (7%)           14M (23%)          14M (23%)           0M (0%)
+[0.280s][info][gc,heap     ] GC(1)      Used:       18M (30%)          18M (30%)          18M (30%)           8M (13%)          24M (40%)           8M (13%)
+[0.280s][info][gc,heap     ] GC(1)      Live:         -                 3M (6%)            3M (6%)            3M (6%)             -                  -
+[0.280s][info][gc,heap     ] GC(1) Allocated:         -                 0M (0%)            0M (0%)            6M (10%)            -                  -
+[0.280s][info][gc,heap     ] GC(1)   Garbage:         -                14M (24%)          14M (24%)           4M (7%)             -                  -
+[0.280s][info][gc,heap     ] GC(1) Reclaimed:         -                  -                 0M (0%)           10M (17%)            -                  -
+[0.280s][info][gc          ] GC(1) Garbage Collection (Allocation Stall) 18M(30%)->8M(13%)
+[0.280s][info][gc          ] Allocation Stall (main) 14.796ms
+[0.280s][info][gc          ] Out Of Memory (main)
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+	at java.base/java.util.Arrays.copyOf(Arrays.java:3720)
+	at java.base/java.util.Arrays.copyOf(Arrays.java:3689)
+	at java.base/java.util.ArrayList.grow(ArrayList.java:237)
+	at java.base/java.util.ArrayList.grow(ArrayList.java:242)
+	at java.base/java.util.ArrayList.add(ArrayList.java:485)
+	at java.base/java.util.ArrayList.add(ArrayList.java:498)
+	at TExample.main(TExample.java:33)
+[0.283s][info][gc,heap,exit] Heap
+[0.283s][info][gc,heap,exit]  ZHeap           used 10M, capacity 60M, max capacity 60M
+[0.283s][info][gc,heap,exit]  Metaspace       used 4970K, capacity 5043K, committed 5120K, reserved 8192K
+[root@centos7 ~]#
