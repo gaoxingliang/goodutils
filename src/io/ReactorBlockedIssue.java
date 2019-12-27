@@ -20,8 +20,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 最终会有6个IO相关的线程
- * 每次new一个CloseableHttpAsyncClient对象都会生成一个ReactorThread 来负责分发事件 [我们暂且叫做MainReactor]
+ * 最终会有6个IO相关的线程<br/>
+ * 每次new一个CloseableHttpAsyncClient对象都会生成一个ReactorThread 来负责分发事件 [我们暂且叫做MainReactor]<br/>
  * <pre>
  *         public CloseableHttpAsyncClientBase(  // 的构造函数...
  *         this.connmgr = connmgr;
@@ -38,33 +38,34 @@ import java.util.concurrent.atomic.AtomicInteger;
  *      org.apache.http.impl.nio.reactor.AbstractMultiworkerIOReactor#execute(org.apache.http.nio.reactor.IOEventDispatch)
  * </pre>
  * <p>
- * AbstractMultiworkerIOReactor#execute步骤 在MainReactor 中执行:
+ * AbstractMultiworkerIOReactor#execute步骤 在MainReactor 中执行:<br/>
  * <pre>
  *     伪代码:
- *      1. 启动worker dispatch线程
+ *      1. 启动worker dispatch线程<br/>
  *             for (int i = 0; i < this.workerCount; i++) {
  *                 final BaseIOReactor dispatcher = this.dispatchers[i];
  *                 this.workers[i] = new Worker(dispatcher, eventDispatch);
  *                 this.threads[i] = this.threadFactory.newThread(this.workers[i]);
  *             }
- *      2. 执行一个while true死循环:
- *         2.1 执行selector.select(timeout) 然后得到一个int值 count 标记selector上ready的事件个数.
+ *      2. 执行一个while true死循环:<br/>
+ *         2.1 执行selector.select(timeout) 然后得到一个int值 count 标记selector上ready的事件个数.<br/>
  *         2.2 先处理, 需要连接到远端的请求的集合中的请求 org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor#processSessionRequests()
- *              如果有需要连接到远端的请求(从requestQueue中不停的poll), 就直接连接,
- *                  如果连接成功, 则生成ChannelEntry并按照RoundRobin的方式分配到对应的Dispatcher线程中作为后续处理 (放到dispatcher的newChannels集合)
- *                  如果有异常, 检查并设置该请求对应的异常调用回调.
- *                  如果正在连接非阻塞模式, 则注册到selector上.
- *         2.3 处理2.1中select出来的key的请求. 如果是Connectable, 就生成对应的ChannelEntry并分发到对应的Dispatcher.
+ *              如果有需要连接到远端的请求(从requestQueue中不停的poll), 就直接连接,<br/>
+ *                  如果连接成功, 则生成ChannelEntry并按照RoundRobin的方式分配到对应的Dispatcher线程中作为后续处理 (放到dispatcher的newChannels集合)<br/>
+ *                  如果有异常, 检查并设置该请求对应的异常调用回调.<br/>
+ *                  如果正在连接非阻塞模式, 则注册到selector上.<br/>
+ *         2.3 处理2.1中select出来的key的请求. 如果是Connectable, 就生成对应的ChannelEntry并分发到对应的Dispatcher.<br/>
  *
  * </pre>
- * 所以MainReactor只会处理Connect事件, Connect完成后就分发给Dispatcher线程执行真正的IO操作了.
+ * 所以MainReactor只会处理Connect事件, Connect完成后就分发给Dispatcher线程执行真正的IO操作了.<br/>
  * <p>
- * 然后还会生成5个真正的执行线程负责执行真正的IO操作比如读取, 写入.
- * 单个Dispatcher按照如下流程执行 (每个Dispatcher有自己的Selector(绑定了一个BaseIOReactor), 和主Selector不是同一个.)
+ * 然后还会生成5个真正的执行线程负责执行真正的IO操作比如读取, 写入.<br/>
+ * 单个Dispatcher按照如下流程执行 (每个Dispatcher有自己的Selector(绑定了一个BaseIOReactor), 和主Selector不是同一个.)<br/>
  * <pre>
  *      跟MainReactor很类似, 也是一个死循环.
  *      1. 执行selector.select事件.
- *      2. 如果有可用的selectionkey事件, 那么会处理.  但是处理该channel上的所有IO事件(读 写 连接... 这个过程会阻塞 并调用callback的处理函数 如果消息完全读取的话)
+ *      2. 如果有可用的selectionkey事件, 那么会处理.
+ *            但是处理该channel上的所有IO事件(读 写 连接... 这个过程会阻塞 并调用callback的处理函数 如果消息完全读取的话)
  *            如下:org.apache.http.impl.nio.reactor.BaseIOReactor#readable(java.nio.channels.SelectionKey)
  *       protected void readable(final SelectionKey key) {
  *         final IOSession session = getSession(key);
@@ -79,12 +80,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  *                     break;
  *                 }
  *             }
- *      3. 处理newChannels上的集合 (前面MainReactor放到这个集合里面的.).  把他们移除newChannels并register到selector上.
+ *      3. 处理newChannels上的集合 (前面MainReactor放到这个集合里面的.).  把他们移除newChannels并register到selector上.<br/>
  * </pre>
- * 所以  我们可以想象:
- * 如果我们的某个Callback需要执行很久很久, 那么 Dispatcher线程会被block住, newChannels里面待处理的ChannelEntry会越来越多.
+ * 所以  我们可以想象:<br/>
+ * 如果我们的某个Callback需要执行很久很久, 那么 Dispatcher线程会被block住, newChannels里面待处理的ChannelEntry会越来越多.<br/>
  * <p>
- * 而这个类就展示了这种case.  你会看到 有些请求还是可以返回成功, 但是有些就是不行, 而且newChannels集合在变大.
+ * 而这个类就展示了这种case.  你会看到 有些请求还是可以返回成功, 但是有些就是不行, 而且newChannels集合在变大.<br/>
  */
 public class ReactorBlockedIssue {
     public static void main(String[] args) throws Exception {
