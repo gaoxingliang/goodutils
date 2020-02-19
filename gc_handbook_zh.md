@@ -1054,7 +1054,7 @@ java -Dcom.sun.management.jmxremote.port=5432 com.yourcompanyYourApp
 ```
 在上面的例子中,JVM会打开5432端口用于JMX连接.
 
-在连接到JVM后,你可以导航到MBeans李彪,选择"java/lang/GarbageCollector". 下面的2张截图分别显示JVisualVM和Java Mission Control连接:
+在连接到JVM后,你可以导航到MBeans里面,选择"java/lang/GarbageCollector". 下面的2张截图分别显示JVisualVM和Java Mission Control连接:
 ![jvisualvm](res/gcbook/jvisualvm.png)
 ![jmc](res/gcbook/jmc.png)
 
