@@ -768,7 +768,7 @@ G1构建于前面章节的很多概念之上. 所以在继续之前,请确保你
 
 一个混合的Evacuation Pause并不总是并发标记阶段结束后立即开始. 有一系列的规则和启发式算法来决定这个. 比如, 可以释放掉老年代的一大部分空间, 那么就没必要做这个了.
 
-因此,就是在并发标记结束和混合Evacuation Pause直接加入很多fully-young的Evacuation Pause.
+因此,就是在并发标记结束和混合Evacuation Pause之间加入很多fully-young的Evacuation Pause.
 
 具体放入收集集合的老年代区的region,以及它们被加入的顺序都基于一系列的规则选择出来的. 这些规则包括:应用设定的软的实时性能指标, 存活统计以及并发标记阶段垃圾回收的效率, 还有一系列可配的JVM 选项. 混合式收集大体上与我们前面看到fully-young相同, 但这次我们讲到新的对象*remembered sets*.
 
