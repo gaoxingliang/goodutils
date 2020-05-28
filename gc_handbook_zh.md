@@ -3,14 +3,205 @@ Plumber copyright 中文版本
 [english version](https://downloads.plumbr.io/Plumbr%20Handbook%20Java%20Garbage%20Collection.pdf)<br>
 *该文章被翻译仅做学习之用*
 
-# 目录
-### 什么是垃圾回收
-### Java中的垃圾回收
-### GC 算法: 基础
-### GC 算法: 实现
-### GC 优化: 基础
-### GC 优化: 工具
-### GC 优化: 实践
+Table of Contents
+
+=================
+
+
+
+  \* [目录](#目录)
+
+​     \* [什么是垃圾回收](#什么是垃圾回收)
+
+​     \* [Java中的垃圾回收](#java中的垃圾回收)
+
+​     \* [GC 算法: 基础](#gc-算法-基础)
+
+​     \* [GC 算法: 实现](#gc-算法-实现)
+
+​     \* [GC 优化: 基础](#gc-优化-基础)
+
+​     \* [GC 优化: 工具](#gc-优化-工具)
+
+​     \* [GC 优化: 实践](#gc-优化-实践)
+
+  \* [什么是垃圾回收(Garbage Collection, GC)](#什么是垃圾回收garbage-collection-gc)
+
+   \* [<strong>手动内存管理</strong>](#手动内存管理)
+
+​     \* [<strong>智能指针</strong>](#智能指针)
+
+   \* [<strong>自动内存管理</strong>](#自动内存管理)
+
+​     \* [<strong>引用计数</strong>](#引用计数)
+
+​     \* [<strong>标记和清扫</strong>](#标记和清扫)
+
+  \* [Java中的GC](#java中的gc)
+
+   \* [<strong>碎片和压缩</strong>](#碎片和压缩)
+
+   \* [<strong>分代假设</strong>](#分代假设)
+
+   \* [<strong>内存池</strong>](#内存池)
+
+​     \* [<strong>Eden</strong>](#eden)
+
+​     \* [<strong>Survivors</strong>](#survivors)
+
+​     \* [<strong>老年代</strong>](#老年代)
+
+​     \* [<strong>持久代</strong>](#持久代)
+
+​     \* [<strong>元空间</strong>](#元空间)
+
+​      \* [元空间与持久代的区别](#元空间与持久代的区别)
+
+   \* [<strong>Minor GC, Major GC, Full GC</strong>](#minor-gc-major-gc-full-gc)
+
+​     \* [<strong>Minor GC</strong>](#minor-gc)
+
+​        \* [什么是Card Table (译注加)](#什么是card-table-译注加)
+
+​        \* [Card Table Finish](#card-table-finish)
+
+​     \* [<strong>Major GC vs Full GC</strong>](#major-gc-vs-full-gc)
+
+  \* [GC 算法: 基础](#gc-算法-基础-1)
+
+   \* [<strong>标记可达对象</strong>](#标记可达对象)
+
+   \* [<strong>移除不可达对象</strong>](#移除不可达对象)
+
+​     \* [<strong>清扫</strong>](#清扫)
+
+​     \* [<strong>压缩</strong>](#压缩)
+
+​     \* [<strong>拷贝</strong>](#拷贝)
+
+  \* [GC 算法: 实现](#gc-算法-实现-1)
+
+   \* [<strong>Serial GC</strong>](#serial-gc)
+
+​     \* [<strong>Minor GC</strong>](#minor-gc-1)
+
+​     \* [<strong>Full GC</strong>](#full-gc)
+
+   \* [<strong>Parallel GC</strong>](#parallel-gc)
+
+​     \* [<strong>Minor GC</strong>](#minor-gc-2)
+
+​     \* [<strong>Full GC</strong>](#full-gc-1)
+
+   \* [<strong>Concurrent Mark and Sweep</strong>](#concurrent-mark-and-sweep)
+
+​     \* [<strong>Minor GC</strong>](#minor-gc-3)
+
+​     \* [<strong>Full GC</strong>](#full-gc-2)
+
+   \* [<strong>G1 - Garbage First</strong>](#g1---garbage-first)
+
+​     \* [<strong>Evacuation Pause: Fully Young</strong>](#evacuation-pause-fully-young)
+
+​     \* [<strong>并发标记</strong>](#并发标记)
+
+​     \* [<strong>Evacuation Pause: Mixed</strong>](#evacuation-pause-mixed)
+
+​     \* [<strong>总结</strong>](#总结)
+
+   \* [<strong>Shenandoah</strong>](#shenandoah)
+
+  \* [GC 优化: 基础](#gc-优化-基础-1)
+
+   \* [<strong>核心概念</strong>](#核心概念)
+
+​     \* [<strong>时延Latency</strong>](#时延latency)
+
+​     \* [<strong>吞吐量Throughput</strong>](#吞吐量throughput)
+
+​     \* [<strong>容量Capacity</strong>](#容量capacity)
+
+   \* [<strong>例子</strong>](#例子)
+
+​     \* [<strong>时延优化</strong>](#时延优化)
+
+​     \* [<strong>吞吐量优化</strong>](#吞吐量优化)
+
+​     \* [<strong>容量优化</strong>](#容量优化)
+
+  \* [GC 优化: 工具](#gc-优化-工具-1)
+
+   \* [<strong>JMX API</strong>](#jmx-api)
+
+   \* [<strong>JVisualVM</strong>](#jvisualvm)
+
+   \* [<strong>jstat</strong>](#jstat)
+
+   \* [<strong>GC 日志</strong>](#gc-日志)
+
+   \* [<strong>GC Viewer</strong>](#gc-viewer)
+
+   \* [<strong>Profilers</strong>](#profilers)
+
+​     \* [<strong>hprof</strong>](#hprof)
+
+​     \* [<strong>Java VisualVM</strong>](#java-visualvm)
+
+​     \* [<strong>AProf</strong>](#aprof)
+
+  \* [GC 优化: 实践](#gc-优化-实践-1)
+
+   \* [高的分配率](#高的分配率)
+
+​     \* [如何衡量分配率](#如何衡量分配率)
+
+​     \* [为什么我需要关心](#为什么我需要关心)
+
+​     \* [举个例子](#举个例子)
+
+​     \* [我的JVM会被影响吗?](#我的jvm会被影响吗)
+
+​     \* [怎么解决?](#怎么解决)
+
+   \* [提前提升](#提前提升)
+
+​     \* [如何测量提升率](#如何测量提升率)
+
+​     \* [为什么我需要关心?](#为什么我需要关心-1)
+
+​     \* [举个例子](#举个例子-1)
+
+​     \* [我的JVM会受影响吗?](#我的jvm会受影响吗)
+
+​     \* [解决办法](#解决办法)
+
+   \* [弱引用 软引用和幻影引用](#弱引用-软引用和幻影引用)
+
+​     \* [我为什么要关心?](#我为什么要关心)
+
+​     \* [举个例子](#举个例子-2)
+
+​     \* [我的JVM是否受影响](#我的jvm是否受影响)
+
+​     \* [怎么解决?](#怎么解决-1)
+
+   \* [其他的例子](#其他的例子)
+
+​     \* [RMI和GC](#rmi和gc)
+
+​     \* [JVMTI tagging和GC](#jvmti-tagging和gc)
+
+​     \* [超大对象](#超大对象)
+
+​     \* [结论](#结论)
+
+  \* [全文完](#全文完)
+
+  \* [参考](#参考)
+
+   \* [user/sys/real时间](#usersysreal时间)
+
+   \* [GC相关演示代码](#gc相关演示代码)
 
 # 什么是垃圾回收(Garbage Collection, GC)
 初看之下, 垃圾回收Garbage Collection, GC)应该是用来-找到和清理掉垃圾的. 但是现实中,它却是做的完全相反的工作. GC是用来追踪那些正在被使用的对象, 然后标记其他的对象为垃圾对象. 将这个牢牢记住, 我们马上就仔细看看JVM中被称为自动垃圾回收再利用的过程是如何实现的.
@@ -593,7 +784,7 @@ GC日志中的一个代表一次年轻代的GC事件:
   11. *[Times: user=0.06 sys=0.00, real=0.01 secs]* 暂停时间.
 
 *这里可以看出弱引用是在MajorGC/CMS时被释放的*
-  
+
 经过5个标记阶段,老年代所有存活对象都被标记了.现在收集器将要通过清扫老年代回收这些无用对象占用的空间:
 **阶段6:并发清扫** 与应用线程并发执行, 不需要STW. 该阶段目的是清除无用对象并回收其占用空间以备将来之用.
 
@@ -710,7 +901,7 @@ java -XX:+UseG1GC com.mypackages.MyExecutableClass
   8. *GC Worker Other (ms)* 其他混杂的活动的时间. 没有在日志中体现的阶段.
   9. *GC Worker Total (ms)* workers工作的总时间.
   10. *GC Worker End (ms)* workers 停止工作的时间戳. 正常情况他们应该大致相等. 否则意味着有太多的线程hangs或者有噪声.
-  
+
 
 除此之外, 在Evacuation pause期间,有一些其他混杂的活动. 这里我们只会涉及其中的一部分. 其他的会在后面讲到.
 
@@ -725,7 +916,7 @@ java -XX:+UseG1GC com.mypackages.MyExecutableClass
   2. *[Ref Proc: 0.2 ms]* 处理非强引用的时间: 清理或者决定是否需要清理
   3. *[Ref Enq: 0.0 ms]* 将非强引用放入对应的ReferenceQueue的时间.
   4. *[Free CSet: 0.0 ms]* 返回收集集合中的释放了的region的时间. 这些集合变为空闲可用.
-  
+
 ### **并发标记** 
 G1构建于前面章节的很多概念之上. 所以在继续之前,请确保你对前面的知识有充分的理解.虽然有很多方法, 但是并发标记的目标却是类似的. G1并发标记使用了一个叫Snapshot-At-The-Beginning/SATB的方法在标记阶段的开始来标记所有存活的对象, 即便它们一会儿会变成垃圾. 关于哪些对象是存活的信息可以用来构建每个region的存活统计, 以便选出高效的回收集合.
 这些信息随后也被用来在老年代上进行垃圾回收. 如果标记发现某个region只有垃圾或者在老年代的STW evacuation pause阶段, 那么它可以完全并行.
@@ -742,11 +933,11 @@ G1构建于前面章节的很多概念之上. 所以在继续之前,请确保你
 > 1.362: [GC concurrent-root-region-scan-start]
 
 > 1.364: [GC concurrent-root-region-scan-end, 0.0028513 secs] 
- 
+
 **阶段3:并发标记Concurrent Mark**这个阶段与CMS中的很像:它遍历对象图,并且在一个特殊的位图中标记访问到的对象.  为了保证SATB的语义, G1 垃圾收集器会要求所有应用线程对对象图的并发修改都会离开原来的引用来达到标记的目的.
 
 这是通过Pre-Write 屏障实现的(不要与Post-Write屏障混淆,我们后面可能会说到), 它的功能是:无论什么时候, 在G1 并发标记运行, 当你想写一个域,会在所谓的log-buffers中保存前面的引用,来方便并发标记线程使用.
- 
+
 **阶段4:重标记Remark**这是一个STW阶段 与CMS类似, 完成标记过程. 对G1而言, 它会停止应用线程来停止并发更新日志流入和处理剩余的一小部分, 然后在并发标记阶段初始化后,标记所有其他还是没被标记的存活对象. 这个阶段也会执行一些额外的清理操作,比如应用处理(参考Evacuation Pause日志)或者类卸载.
 > 1.645: [GC remark 1.645: [Finalize Marking, 0.0009461 secs] 1.646: [GC ref-proc, 0.0000417 secs] 1.646: [Unloading, 0.0011301 secs], 0.0074056 secs] [Times: user=0.01 sys=0.00, real=0.01 secs]
 
@@ -871,7 +1062,7 @@ GC的时延目标都是从一般的时延需求得来的.一般的时延需求�
 当面对上面类似的性能目标时,我们都需要保证GC暂停不会再事务期间共享太多的时间以致达不到目标. "太多"意味着这是引用相关的,而且需要考虑到其他外部因素对实验的影响, 比如外部数据资源的RRT, 锁竞争或者Safe points等.
 
 让我们假设我们的性能目标是:90%的应用事务都在小于1000ms内完成,而且没有事务超过10000ms. 除此之外,我们还假设GC暂停时间不能超过10%. 由此,我们可以推断,90%的GC暂停都要在100ms内完成, 没有哪个GC暂停会超过1000ms.为了简单期间,我们会忽略在同一事务中可能发生的多个暂停.
- 
+
 上面我们已经清楚了我们的需求, 下一步就是如何测量暂停时间.有很多工具我们会在随后的章节(工具)[#GC 优化: 工具]讲到. 在这里,我们先看下GC日志来判断GC暂停. 这个信息存在于多个日志片段中,所以我们先看下哪些时间数据是相关的:
 
 >  2015-06-04T13:34:16.974-0200: 2.578: [Full GC (Ergonomics) [PSYoungGen: 93677K- >70109K(254976K)] [ParOldGen: 499597K->511230K(761856K)] 593275K->581339K(1016832K), [Metaspace: 2936K->2936K(1056768K)], 0.0713174 secs] [Times: user=0.21 sys=0.02, real=0.07 secs
@@ -956,7 +1147,7 @@ public class Producer implements Runnable {
 > 2015-06-04T13:34:16.119-0200: 1.723: [GC (Allocation Failure) [PSYoungGen: 114016K- >73191K(234496K)] 421540K->421269K(745984K), 0.0858176 secs] [Times: user=0.04 sys=0.06, real=0.09 secs]
 
 > 2015-06-04T13:34:16.738-0200: 2.342: [GC (Allocation Failure) [PSYoungGen: 234462K- >93677K(254976K)] 582540K->593275K(766464K), 0.2357086 secs] [Times: user=0.11 sys=0.14, real=0.24 secs]
-  
+
 >  2015-06-04T13:34:16.974-0200: 2.578: [Full GC (Ergonomics) [PSYoungGen: 93677K- >70109K(254976K)] [ParOldGen: 499597K->511230K(761856K)] 593275K->581339K(1016832K), [Metaspace: 2936K->2936K(1056768K)], 0.0713174 secs] [Times: user=0.21 sys=0.02, real=0.07 secs]
 
 从日志中的信息, 我们可以开始来从3个不同的目标来尝试改善现状:
@@ -982,7 +1173,7 @@ public class Producer implements Runnable {
 再回顾下我们前面的3组测试结果:
 
 | 堆 | GC算法 | 有用工作时间 | 最长暂停 |
-| --- | --- | --- | --- 
+| --- | --- | --- | --- |
 | -Xmx12g | -XX:+UseConcMarkSweepGC | 89.8% | **560ms** |
 | -Xmx12g | -XX:+UseParallelGC | 91.5% | 1104ms |
 | -Xmx8g | -XX:+UseConcMarkSweepGC | 66.3% | 1610ms |
@@ -1497,7 +1688,7 @@ The get method of a phantom reference always returns null
 *译者注:这里因为MaxTenuringThreshold=1,在没有弱引用的时候,那些对象都因为没人引用而被回收了,但是
 弱引用会在下一个GC周期才会得到释放所以这些对象都会被放到老年代.*
 *译者注：实际测试中，不要弱引用时，基本全是minorgc，使用弱引用时，full gc频率增大，但是minorgc还是很频繁。在增大内存后，与没有弱引用时类似*
- 
+
 ![](img\b7a4a162.png)
 
 在使用软引用的[例子](src/memory/SoftReferences.java)中可能更糟.因为软引用可达的对象只会在
