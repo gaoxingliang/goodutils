@@ -28,7 +28,7 @@ http://127.0.0.1:9999/ -> to a http url
 这里展示了如何将LogNotice 类相关的调用 替换为LogMsg的实现.
 
 # Btrace usage 文档
-[btrace doc](btrace_usage.md)
+[btrace doc](./btrace/btrace_usage.md)
 
 # 梯度下降测试代码
 [GredientDescentDemo](src/GredientDescentDemo.java)
@@ -49,7 +49,7 @@ diagnose ssl relates protocols and ciphers:
 build it with:<br>
 ```
 gradle fatjar
-``` 
+```
 [SSLTest](ssltest/src/main/java/SSLTest.java)
 run it with:
 ```
