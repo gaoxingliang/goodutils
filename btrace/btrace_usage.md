@@ -3,14 +3,56 @@ Update History
 | 2020.05.28 | add an example with latest btrace 2.0.2 and add one example how to |
 | :--------- | ------------------------------------------------------------ |
 |            |                                                              |
-|            |                                                              |
-|            |                                                              |
 
 
 
 [source url](https://www2.cs.duke.edu/courses/fall15/compsci290.1/TA_Material/jungkang/BTraceTutorial.md)
 
 [TOC]
+Table of Contents
+=================
+
+   * [BTrace Tutorial](#btrace-tutorial)
+      * [0. btrace](#0-btrace)
+      * [0.1 Add an example of how to run](#01-add-an-example-of-how-to-run)
+         * [Step 1: Write your btrace script](#step-1-write-your-btrace-script)
+         * [Step 2: compile it](#step-2-compile-it)
+         * [Step 3: run it](#step-3-run-it)
+      * [1. Hello World](#1-hello-world)
+         * [Setup](#setup)
+            * [HelloWorld Class](#helloworld-class)
+         * [Steps](#steps)
+         * [Lessons](#lessons)
+            * [Lesson 1 - Launching BTrace](#lesson-1---launching-btrace)
+               * [Using btrace client to attach to a running JVM](#using-btrace-client-to-attach-to-a-running-jvm)
+               * [Starting a Java application with BTrace agent](#starting-a-java-application-with-btrace-agent)
+                  * [Directly](#directly)
+                  * [Using `btracer'](#using-btracer)
+               * [Compiling trace scripts](#compiling-trace-scripts)
+            * [Lesson 2 - Tracing methods](#lesson-2---tracing-methods)
+               * [1. Getting just the information that any method is being executed](#1-getting-just-the-information-that-any-method-is-being-executed)
+               * [2. Get the method names](#2-get-the-method-names)
+               * [3. Intercept only a particular method](#3-intercept-only-a-particular-method)
+               * [4. Intercept only a particular method with name matching the handler name](#4-intercept-only-a-particular-method-with-name-matching-the-handler-name)
+               * [5. Intercept methods with names matching certain patterns](#5-intercept-methods-with-names-matching-certain-patterns)
+               * [6. Intercept methods with names matching certain patterns and inspect their parameters](#6-intercept-methods-with-names-matching-certain-patterns-and-inspect-their-parameters)
+               * [7. Intercept method with names matching certain patterns and discover their signatures](#7-intercept-method-with-names-matching-certain-patterns-and-discover-their-signatures)
+               * [8. Intercept methods for all subclasses and implementations of a certain class/interface](#8-intercept-methods-for-all-subclasses-and-implementations-of-a-certain-classinterface)
+               * [9. Intercept method with a particular name and signature   capture the method arguments (you need to use the information learned in the previous step)](#9-intercept-method-with-a-particular-name-and-signature--capture-the-method-arguments-you-need-to-use-the-information-learned-in-the-previous-step)
+               * [10. Intercpet method with a particular name and signature but don't capture the method arguments. Here you will need to decifer the VM method signature to get java like method signature. See the @OnMethod.type() javadoc for the java like signature format.](#10-intercpet-method-with-a-particular-name-and-signature-but-dont-capture-the-method-arguments-here-you-will-need-to-decifer-the-vm-method-signature-to-get-java-like-method-signature-see-the-onmethodtype-javadoc-for-the-java-like-signature-format)
+               * [11. Intercept method with a particular name and capture its return value](#11-intercept-method-with-a-particular-name-and-capture-its-return-value)
+               * [12. Inspect the content of an instance variable in the method declaring class](#12-inspect-the-content-of-an-instance-variable-in-the-method-declaring-class)
+               * [13. Get the method execution duration](#13-get-the-method-execution-duration)
+               * [14. Tracing methods invoked from inside a particular method](#14-tracing-methods-invoked-from-inside-a-particular-method)
+               * [15. Measuring the duration of methods invoked from inside a particular method](#15-measuring-the-duration-of-methods-invoked-from-inside-a-particular-method)
+               * [16. Tracing methods invoked from inside a particular method and capturing their parameters](#16-tracing-methods-invoked-from-inside-a-particular-method-and-capturing-their-parameters)
+            * [Lesson 3 - Global callbacks](#lesson-3---global-callbacks)
+            * [<strong>@OnExit</strong>](#onexit)
+            * [<strong>@OnError</strong>](#onerror)
+            * [<strong>@OnTimer</strong>](#ontimer)
+            * [<strong>@OnEvent</strong>](#onevent)
+            * [Lesson 4 - Sampling](#lesson-4---sampling)
+
 
 Update History
 
