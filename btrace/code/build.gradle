@@ -1,0 +1,25 @@
+plugins {
+    id 'java'
+}
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven {
+        url = 'http://maven.aliyun.com/nexus/content/groups/public/'
+    }
+}
+
+dependencies {
+
+    // below jar is too old and is NOT compatible with latest version 2.0.2 which is not upload to maven
+//    compile group: 'com.sun.tools.btrace', name: 'btrace-boot', version: '1.2.3'
+//    compile group: 'com.sun.tools.btrace', name: 'btrace-agent', version: '1.2.3'
+//    compile group: 'com.sun.tools.btrace', name: 'btrace-client', version: '1.2.3'
+    compile fileTree(dir: '../btrace-2.0.2libs/', include: ['*.jar'])
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}

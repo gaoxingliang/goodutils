@@ -1,6 +1,107 @@
+Update History
+
+| 2020.05.28 | add an example with latest btrace 2.0.2 and add one example how to |
+| :--------- | ------------------------------------------------------------ |
+|            |                                                              |
+|            |                                                              |
+|            |                                                              |
+
+
+
 [source url](https://www2.cs.duke.edu/courses/fall15/compsci290.1/TA_Material/jungkang/BTraceTutorial.md)
+
+[TOC]
+
+Update History
+
+
+
 # BTrace Tutorial
-# This tutorial is written by Jaroslav Bachorik.
+This tutorial is written by Jaroslav Bachorik.
+
+## 0. btrace
+- download btrace from [github](https://github.com/btraceio/btrace/releases) <br> 
+- and *more examples on the source code dir examples folder*. <br> 
+- and now this has been moved from *com.sun* to *openjdk*.
+
+## 0.1 Add an example of how to run
+### Step 1: Write your btrace script 
+an example [MonitorThreadCreate.java](./code/src/main/java/MonitorThreadCreate.java)
+### Step 2: compile it
+```sh
+# cd to your btrace dir
+/Users/edward/Documents/installers/btrace-2.0.2-bin/bin
+./btracec -cp /Users/edward/Documents/installers/btrace-2.0.2-bin/libs/btrace-boot.jar /Users/edward/projects/goodutils/btrace/code/src/main/java/btrace/MonitorThreadCreate.java
+```
+then the file is under `/Users/edward/Documents/installers/btrace-2.0.2-bin/bin`
+### Step 3: run it
+```
+java -javaagent:/Users/edward/Documents/installers/btrace-2.0.2-bin/libs/btrace-agent.jar=scriptOutputFile=/Users/edward/projects/goodutils/btrace/threadOutput.txt,script=/Users/edward/Documents/installers/btrace-2.0.2-bin/bin/MonitorThreadCreate.class   Main
+```
+
+An exmaple App: [Main.java](./code/src/main/java/example/Main.java)
+
+intellij example set run options:
+
+![image-20200528103054116](image-20200528103054116.png)
+
+an example output is uploaded:
+
+```
+### BTrace Log: 5/28/20 10:34 AM
+
+==========================
+Thread create below
+C2 CompilerThread0
+java.lang.Thread.<init>(Thread.java:536)
+==========================
+==========================
+Thread create below
+C2 CompilerThread1
+java.lang.Thread.<init>(Thread.java:536)
+==========================
+==========================
+Thread create below
+C2 CompilerThread2
+java.lang.Thread.<init>(Thread.java:536)
+==========================
+==========================
+Thread create below
+C1 CompilerThread3
+java.lang.Thread.<init>(Thread.java:536)
+==========================
+==========================
+Thread create below
+Service Thread
+java.lang.Thread.<init>(Thread.java:536)
+==========================
+==========================
+Thread create below
+Thread-4
+java.lang.Thread.<init>(Thread.java:465)
+example.Main.method1(Main.java:17)
+example.Main.main(Main.java:11)
+==========================
+==========================
+Thread create below
+Thread-5
+java.lang.Thread.<init>(Thread.java:465)
+example.Main.method2(Main.java:38)
+example.Main.main(Main.java:12)
+==========================
+==========================
+Thread create below
+DestroyJavaVM
+java.lang.Thread.<init>(Thread.java:536)
+==========================
+
+```
+
+
+
+
+
+
 
 ## 1. Hello World
 
@@ -8,33 +109,9 @@ Accustoms the learner to 'btrace' command and the way it is used.
 Demonstrates the BTrace ability to instrument a class.
 
 ### Setup
-Maven:
+download it from the github above. and set your gradle like:
 ```
-<!-- https://mvnrepository.com/artifact/com.sun.tools.btrace/btrace-boot -->
-<dependency>
-    <groupId>com.sun.tools.btrace</groupId>
-    <artifactId>btrace-boot</artifactId>
-    <version>1.2.3</version>
-</dependency>
-<dependency>
-    <groupId>com.sun.tools.btrace</groupId>
-    <artifactId>btrace-agent</artifactId>
-    <version>1.2.3</version>
-</dependency>
-<dependency>
-    <groupId>com.sun.tools.btrace</groupId>
-    <artifactId>btrace-client</artifactId>
-    <version>1.2.3</version>
-</dependency>
-
-```
-
-Gradle:
-```
-compile group: 'com.sun.tools.btrace', name: 'btrace-boot', version: '1.2.3'
-compile group: 'com.sun.tools.btrace', name: 'btrace-agent', version: '1.2.3'
-compile group: 'com.sun.tools.btrace', name: 'btrace-client', version: '1.2.3'
-
+   compile fileTree(dir: '../btrace-2.0.2libs/', include: ['*.jar'])
 ```
 
 
@@ -172,7 +249,7 @@ Rather than regular *javac* the BTrace compiler is used - causing the script to 
 
 This is the main purpose of BTrace - inject a custom code to custom locations to give the insights about the internal state and dynamics of the application.
 
-1. Getting just the information that any method is being executed
+##### 1. Getting just the information that any method is being executed
 ```
 package helloworld;
 import ...;
@@ -186,7 +263,7 @@ public class HelloWorldTrace {
 }
 ```
 
-2. Get the method names
+##### 2. Get the method names
 ```
 package helloworld;
 import ...;
@@ -200,7 +277,7 @@ public class HelloWorldTrace {
 }
 ```
 
-3. Intercept only a particular method
+##### 3. Intercept only a particular method
 ```
 package helloworld;
 import ...;
@@ -214,7 +291,7 @@ public class HelloWorldTrace {
 }
 ```
 
-4. Intercept only a particular method with name matching the handler name
+##### 4. Intercept only a particular method with name matching the handler name
 ```
 package helloworld;
 import ...;
@@ -228,7 +305,7 @@ public class HelloWorldTrace {
 }
 ```
 
-5. Intercept methods with names matching certain patterns
+##### 5. Intercept methods with names matching certain patterns
 __Note:__ you can use pattern matching for the class names, too
 
 ```
@@ -244,7 +321,7 @@ public class HelloWorldTrace {
 }
 ```
 
-6. Intercept methods with names matching certain patterns and inspect their parameters
+##### 6. Intercept methods with names matching certain patterns and inspect their parameters
 
 ```
 package helloworld;
@@ -261,7 +338,7 @@ public class HelloWorldTrace {
 }
 ```
 
-7. Intercept method with names matching certain patterns and discover their signatures
+##### 7. Intercept method with names matching certain patterns and discover their signatures
 ```
 package helloworld;
 import ...;
@@ -275,7 +352,7 @@ public class HelloWorldTrace {
 }
 ```
 
-8. Intercept methods for all subclasses and implementations of a certain class/interface
+##### 8. Intercept methods for all subclasses and implementations of a certain class/interface
 
 __Note:__ 'extra.HelloWorldBase.callD()' doesn't show up - it is defined in the superclass of 'extra.HelloWorld' and therefore not intercepted.
 
@@ -292,7 +369,7 @@ public class HelloWorldTrace {
 }
 ```
 
-9. Intercept method with a particular name and signature + capture the method arguments (you need to use the information learned in the previous step)
+##### 9. Intercept method with a particular name and signature + capture the method arguments (you need to use the information learned in the previous step)
 
 __Note:__ The order of the un-annotated parameters must correspond to the order of the traced method parameters. Annotated parameters may be placed anywhere.
 
@@ -310,7 +387,7 @@ public class HelloWorldTrace {
 }
 ```
 
-10. Intercpet method with a particular name and signature but don't capture the method arguments. Here you will need to decifer the VM method signature to get java like method signature. See the @OnMethod.type() javadoc for the java like signature format.
+##### 10. Intercpet method with a particular name and signature but don't capture the method arguments. Here you will need to decifer the VM method signature to get java like method signature. See the @OnMethod.type() javadoc for the java like signature format.
 
 Eg. having the VM method signature in form of (Ljava/lang/String;I)V will translate to "void (java.lang.String, int)"
 
@@ -329,7 +406,7 @@ public class HelloWorldTrace {
 }
 ```
 
-11. Intercept method with a particular name and capture its return value
+##### 11. Intercept method with a particular name and capture its return value
 `location=@Location(Kind.RETURN)` sets up the instrumentation to be inserted just before the method exits
 
 ```
@@ -345,7 +422,7 @@ public class HelloWorldTrace {
 }
 ```
 
-12. Inspect the content of an instance variable in the method declaring class
+##### 12. Inspect the content of an instance variable in the method declaring class
 
 ```
 package helloworld;
@@ -367,7 +444,7 @@ public class HelloWorldTrace {
 }
 ```
 
-13. Get the method execution duration
+##### 13. Get the method execution duration
 
 __Note:__ Need to use @Location(Kind.RETURN) to be able to capture the execution duration
 
@@ -385,7 +462,7 @@ public class HelloWorldTrace {
 }
 ```
 
-14. Tracing methods invoked from inside a particular method
+##### 14. Tracing methods invoked from inside a particular method
 
 __Note:__ 'class', 'method' etc. directly in the @OnMethod annotation will determine where we should look for the invocation of the methods defined by 'class', 'method' etc. parameters in the @Location annotation.
 __Note:__ @ProbeMethodName and @ProbeClassName refer to the context method and class; @TargetMethodOrField refers to the traced method invocation
@@ -411,7 +488,7 @@ public class HelloWorldTrace {
 }
 ```
 
-15. Measuring the duration of methods invoked from inside a particular method
+##### 15. Measuring the duration of methods invoked from inside a particular method
 
 ```
 package helloworld;
@@ -433,7 +510,7 @@ public class HelloWorldTrace {
 }
 ```
 
-16. Tracing methods invoked from inside a particular method and capturing their parameters
+##### 16. Tracing methods invoked from inside a particular method and capturing their parameters
 
 __Note:__ The captured parameters pertain to the invoked method rather than the context method
 __Note:__ The @Self annotated parameter captures the context instance and @TargetInstance annotated parameter captures the instance the method is invoked on
