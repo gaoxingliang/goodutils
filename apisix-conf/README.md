@@ -16,4 +16,4 @@ java -jar apisixconf-1.0-SNAPSHOT.jar routes update '{"timeout":{"connect": 10,"
 java -jar apisixconf-1.0-SNAPSHOT.jar routes list -u http://127.0.0.1:9180 -k edd1c9f034335f136f87ad84b625c8f1
 ```
 <br>
-`-u` is the url of admin api. `-k` is the api key.
+"-u" is the url of admin api. "-k" is the api key.
