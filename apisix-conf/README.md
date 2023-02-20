@@ -6,14 +6,19 @@ a cli to configure apisix upstream / routes by the [apisix admin api](https://ap
 ``
 
 # support configure apisix in cli.
-
-```sh
+"-u" is the url of admin api. "-k" is the api key.<br>
 an example to update all `upstreams` timeout settings:
-java -jar apisixconf-1.0-SNAPSHOT.jar upstreams update '{"timeout":{"connect": 10,"send": 10,"read": 30}}' -u http://127.0.0.1:9180 -k edd1c9f034335f136f87ad84b625c8f1 -all
--- update all routes
-java -jar apisixconf-1.0-SNAPSHOT.jar routes update '{"timeout":{"connect": 10,"send": 10,"read": 30}}' -u http://127.0.0.1:9180 -k edd1c9f034335f136f87ad84b625c8f1 -all
--- list all routes
-java -jar apisixconf-1.0-SNAPSHOT.jar routes list -u http://127.0.0.1:9180 -k edd1c9f034335f136f87ad84b625c8f1
+```sh
+java -jar apisixconf.jar upstreams update '{"timeout":{"connect": 10,"send": 10,"read": 30}}' -u http://127.0.0.1:9180 -k edd1c9f034335f136f87ad84b625c8f1 -all
+```
+
+update all `routes`:
+```sh
+java -jar apisixconf.jar routes update '{"timeout":{"connect": 10,"send": 10,"read": 30}}' -u http://127.0.0.1:9180 -k edd1c9f034335f136f87ad84b625c8f1 -all
+```
+
+list all routes:
+```sh
+java -jar apisixconf.jar routes list -u http://127.0.0.1:9180 -k edd1c9f034335f136f87ad84b625c8f1
 ```
 <br>
-"-u" is the url of admin api. "-k" is the api key.
