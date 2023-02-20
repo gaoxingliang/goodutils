@@ -56,6 +56,9 @@ run it with:
 java -cp ssltest-0.0.1.jar SSLTest -enabledprotocols TLS -sslprotocol TLSv1.2 -no-check-certificate -no-verify-hostname -unlimited-jce -sni -ciphers TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384 baidu.com:443
 ```
 
+# apisix cli configure
+命令行设置apisix参数[这里](apisix_conf/README.md)
+
 # software installation related
 
 [BeyondCompare](softs/beyondCompare_onMac/readme.md)
