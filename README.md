@@ -57,7 +57,7 @@ java -cp ssltest-0.0.1.jar SSLTest -enabledprotocols TLS -sslprotocol TLSv1.2 -n
 ```
 
 # apisix cli configure
-命令行设置apisix参数[这里](apisix_conf/README.md)
+命令行设置apisix参数[这里](apisix-conf/README.md)
 
 # software installation related
 
