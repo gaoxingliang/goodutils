@@ -11,7 +11,6 @@ an example to update all `upstreams` timeout settings:
 ```sh
 java -jar apisixconf.jar upstreams update '{"timeout":{"connect": 10,"send": 10,"read": 30}}' -u http://127.0.0.1:9180 -k edd1c9f034335f136f87ad84b625c8f1 -all
 ```
-
 update all `routes`:
 ```sh
 java -jar apisixconf.jar routes update '{"timeout":{"connect": 10,"send": 10,"read": 30}}' -u http://127.0.0.1:9180 -k edd1c9f034335f136f87ad84b625c8f1 -all
